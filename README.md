@@ -1,9 +1,6 @@
-# DEFI - Stable Coin
+# DEFI - StableCoin
 
 ## DeFi Introduction
-
-> ❗ **NOTE** <br />
-> This is the hardest and most badass project in the entire course. This section is for those who want to go deep into DeFi. If DeFi isn't your thing, feel free to skip and come back to this section.
 
 Decentralized Finance (DeFi) is an enormous ecosystem, we couldn't hope to offer an exhaustive coverage of everything available, but we are going to provide a thorough rundown of what DeFi is, why it's popular and some of the most popular dApps out there.
 
@@ -54,7 +51,7 @@ Unfortunately, not all of these DeFi protocols work on testnets, but I do have a
 -   **[Become a DeFi QUANT](https://www.youtube.com/watch?v=x0YDcZly_PU)**
 -   **[Aave Flash Loan Tutorial](https://www.youtube.com/watch?v=Aw7yvGFtOvI)**
 
-> ❗ **IMPORTANT**
+> ❗ **IMPORTANT** <br />
 > If you do decide to experiment with these protocols, I highly recommend doing so on testnets when possible and Layer 2s (like Polygon, Optimism, or Arbitrum) as the fees on Ethereum Mainnet can be _very_ high.
 
 ### MEV
@@ -65,63 +62,7 @@ At a very high-level, MEV is the process by which a node validator or miner orde
 
 There are many teams and protocols working hard to mitigate the effects of MEV advantages, but for now, I recommend that anyone looking to get deep into DeFi read through and understand the content on **[flashbots.net's New to MEV guide](https://docs.flashbots.net/new-to-mev)**. This content is both an entertaining way to learn about a complex concept and extremely eye-opening to the dangers MEV represents in the DeFi space.
 
-### Wrap Up
-
-The project we're going to be building in this section is a _stablecoin_. Stablecoins may seem simple on their surface, but these are a bit of an advanced concept. If anything is confusing, I encourage you to leverage all of the resources available to you to become unstuck.
-
--   AI gets better each day. Use assistants like **[ChatGPT](https://chatgpt.com)** for insight into your problems (beware hallucinations)
--   **[The Discussions Tab](https://github.com/Cyfrin/foundry-full-course-f23/discussions)** of the course is a great place to start dialogues and seek assistance
--   **[Cyfrin's Discord Server](https://discord.gg/cyfrin)** contains thousands of likeminded students eager to help each other succeed.
-
-Like I said, there is _a lot_ to DeFi and this is easily going to be the most advanced section in this whole course. If you're able to succeed here you'll have reason to be exceptionally proud.
-
-The core is, DeFi is `permissionless`, `open-source`, finance and to _me_ is the best thing smart contracts enable. Through DeFi we can move away from contemporary financial institutions towards a fairer and more transparent finance system.
-
-Let's get started walking through the project code.
-
-Hello and welcome back. Today we will be delving into Foundry DeFi, taking a look at the code we will be working with throughout this course. It is important to mention that DeFi is an enormous and complex subject that fully deserves an exclusive course, but for now, let's start by delving into the basics of DeFi. Let’s get started!
-
-### I. An Overview of DeFi
-
-If you are new to DeFi, a great starting point is [DeFi Llama](https://defillama.com/), a simple and intuitive website that provides a current snapshot of the DeFi industry, giving insights into total value locked in DeFi, leading apps, and dominant protocols. Top platforms include open-source decentralized banking like Aave, liquid staking platforms like Lido, decentralized exchanges like Uniswap and Curve Finance, and collateralized debt position protocols like MakerDAO which we will be building later in the course.
-
-### The Beauty of DeFi
-
-<img src='./images/defi-introduction/defi-introduction1.png' alt='defi-introduction1' />
-
-The beauty of DeFi and the reason for its growing popularity is the access it provides to sophisticated financial products and instruments in a decentralized context.
-
-<img src='./images/defi-introduction/defi-introduction2.png' alt='defi-introduction2' />
-
-In my opinion, DeFi is possibly the most exciting and important application of smart contracts. I highly recommend spending some time to become conversant with the basics of DeFi, if not becoming fully fluent. Start with useful resources such as the [Bankless](https://www.bankless.com/) podcast and [MetaMask Learn](https://learn.metamask.io/).
-
-### II. Getting Started with DeFi
-
-I encourage you to begin by playing around with apps such as Aave and Uniswap on their respective websites.
-
-For newcomers, it is advisable to start on testnets. Some platforms, such as Ethereum, have high transaction fees, so beginners might want to consider cheaper alternatives like Polygon Optimism or Arbitrum.
-
-It's crucial to remain aware of the concept of MEV (Miner Extractable Value or Maximal Extractable Value) which is a significant issue in the DeFi industry. In essence, if you are a validator who arranges transactions in a block, you can organize them in a manner that favors you - cultivating fair practices in this area is the focus of several protocols like Flashbots.
-
-For those looking to delve deeper into DeFi, I recommend checking out the [Flashbots.net](https://www.flashbots.net/) website, which houses a wealth of videos and blogs.
-
-### III. The Project: Building A Stablecoin
-
-In this course, we will be building our version of a stablecoin. The concept of stablecoins is advanced and widely misunderstood. To simplify it, they are assets that peg their market value to another stable asset, like gold or a fiat currency.
-
-### IV. Foundry Stablecoin Project is the Most Advanced.
-
-<img src='./images/defi-introduction/defi-introduction3.png' alt='defi-introduction3' />
-
-Even though we have following lessons on upgrades, governance, introduction to security, this Foundry Stablecoin project is the most advanced one we're working with, hands down.
-
-Stepping into DeFi and understanding everything in this lesson can be a daunting task. Seek help from [Chat GPT](https://chat.openai.com/), use the [GitHub repo](https://github.com/Cyfrin/foundry-full-course-f23/) discussion tab or even browse the [MakerDAO forum](https://forum.makerdao.com/) to understand how the industry stalwarts are working and implementing DeFi.
-
-You can even check out Coinbase's educational content to get a headstart on DeFi.
-
 ## DeFi Code Walkthrough
-
-As mentioned in the previous lesson, all the code we'll be working with, in the DeFi Stablecoin section can be found in the **[GitHub Repo](https://github.com/Cyfrin/foundry-defi-stablecoin-f23)**. Let's walk through the code to get a sense of what's happening and how the protocol works.
 
 The Decentralized Stablecoin protocol has 2 contracts at it's heart.
 
@@ -139,12 +80,7 @@ The real meat of this protocol can be found in `DSCEngine.sol`. `DecentralizeSta
 -   **burn**
 -   **liquidate**
 
-... and much more. We'll be diving into what each of these means and how they're used within the protocol as we progress through the section.
-
-In addition to all the source contracts, this protocol comes with a full test suite including `unit`, `fuzz` and `invariant` tests, all which we're doing to build together.
-
-> ❗ **PROTIP**
-> Invariant tests are, in my mind, what set apart mediocre developers from truly skilled and advanced ones.
+... and much more.
 
 We'll also be recreating all the scripts that you can see in the scripts folder, primarily a deploy script, spiced up to include `Chainlink Pricefeeds`, used to determine the prices of collateral.
 
@@ -159,8 +95,6 @@ We hope to cover 5 subjects:
 3. Categories and Properties
 4. Designs of top Stablecoins
 5. What Stablecoins really do
-
-Let's get started.
 
 ### What Are Stablecoins?
 
@@ -249,7 +183,7 @@ You can see what I mean by spectrum by comparing how some of these tokens functi
 
 <img src='./images/stablecoin-introduction/stablecoin-introduction3.png' alt='stablecoin-introduction3' />
 
-> ❗ **NOTE**
+> ❗ **NOTE** <br />
 > Dirt Roads uses `Dumb` as the opposite of algorithmic, instead of governed.
 
 You'll notice that most Fiat-Collateralized assets are more governed, as you'll often need a centralized entity to onramp the fiat into the blockchain ecosystem.
@@ -322,7 +256,7 @@ DAI is one of the most influential DeFi projects ever created.
 
 Effectively how DAI works is, a user deposits some form of crypto collateral, such as ETH, and based on the current value of that collateral in US Dollars, some value of DAI is minted the user. It's only possible to mint _less_ DAI than the value of collateral a user has deposited. In this way the stablecoin is said to be over-collateralized.
 
-> ❗ **NOTE**
+> ❗ **NOTE** <br />
 > DAI also has an annual stability fee on deposited collateral \~2%
 
 When a user wants to redeem their collateral, DAI must be deposited back into the protocol, which then burns the deposited DAI and released the appropriate amount of collateral.
@@ -438,3 +372,243 @@ With protocols like Aave and Curve considering their own stablecoin offerings, I
 For those developers who want to try building their own, there are some minimalistic examples you can check out on the **[defi-minimal GitHub Repo](https://github.com/smartcontractkit/defi-minimal)**.
 
 I'm super excited for the future of DeFi and stablecoins. Let's get started creating our very own.
+
+## DecentralizedStableCoin.sol
+
+Let's start by making our project directory.
+
+```bash
+mkdir foundry-defi-stablecoin
+cd foundry-defi-stablecoin
+code .
+```
+
+With the directory open in VSCode, we can initialize a new Foundry project.
+
+```bash
+forge init
+```
+
+Finally, remove the placeholder example contracts `src/Counter.sol`, `script/Counter.s.sol`, and `test/Counter.t.sol`.
+
+Our stablecoin is going to be:
+
+1. Relative Stability: Anchored or Pegged to the US Dollar
+    1. Chainlink Pricefeed
+    2. Function to convert ETH & BTC to USD
+2. Stability Mechanism (Minting/Burning): Algorithmicly Decentralized
+    1. Users may only mint the stablecoin with enough collateral
+3. Collateral: Exogenous (Crypto)
+    1. wETH
+    2. wBTC
+
+To add some context to the above, we hope to create our stablecoin in such a way that it is pegged to the US Dollar. We'll achieve this by leveraging chainlink pricefeeds to determine the USD value of deposited collateral when calculating the value of collateral underlying minted tokens.
+
+The token should be kept stable through this collateralization stability mechanism.
+
+For collateral, the protocol will accept wrapped Bitcoin and wrapped Ether, the ERC20 equivalents of these tokens.
+
+Alright, with things scoped out a bit, let's dive into writing some code. Start by creating the file `src/DecentralizedStableCoin.sol`. I'm hoping to make this as professional as possible, so I'm actually going to paste my contract and function layouts as a reference to the top of this file.
+
+```js
+// SPDX-License-Identifier: MIT
+
+// This is considered an Exogenous, Decentralized, Anchored (pegged), Crypto Collateralized low volatility coin
+
+// Layout of Contract:
+// version
+// imports
+// interfaces, libraries, contracts
+// errors
+// Type declarations
+// State variables
+// Events
+// Modifiers
+// Functions
+
+// Layout of Functions:
+// constructor
+// receive function (if exists)
+// fallback function (if exists)
+// external
+// public
+// internal
+// private
+// view & pure functions
+```
+
+When I wrote this codebase, I intended to get it audited, and I did! You can actually see the audit results **[here](https://www.codehawks.com/contests/cljx3b9390009liqwuedkn0m0)**. For this reason, something different you may notice about this codebase is how _verbose_ we're going to be. When it comes to security and having auditors review our code, the clearer we are in explaining the code and added context to our goals, the easier their lives are going to be keeping us secure.
+
+With that said, our contract boilerplate is going to be set up similarly to everything we've been doing so far. Let's add some NATSPEC to outline the contracts purpose.
+
+```js
+pragma solidity ^0.8.18;
+
+/*
+    * @title: DecentralizedStableCoin
+    * @author: MRAlirad
+    * Collateral: Exogenous (ETH & BTC)
+    * Minting: Algorithmic
+    * Relative Stability: Pegged to USD
+    *
+    * This is the contract meant to be governed by DSCEngine. This contract is just the ERC20 implementation of our stablecoin system.
+    */
+contract DecentralizedStableCoin {}
+```
+
+This contract is effectively just going to be a fairly standard ERC20 to function as the asset for our stablecoin protocol. All of the logic for the protocol will be handled by DSCEngine.sol. We'll need OpenZeppelin to get started.
+
+```bash
+forge install openzeppelin/openzeppelin-contracts --no-commit
+```
+
+And of course, we can add our remappings to our
+`foundry.toml`.
+
+```toml
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+remappings = ["@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts"]
+```
+
+Rather than importing a standard ERC20 contract, we'll be leveraging the ERC20Burnable extension of this standard. ERC20Burnable includes `burn` functionality for our tokens which will be important when we need to take the asset out of circulation to support stability.
+
+```js
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.8.18;
+
+import {ERC20Burnable, ERC20} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+
+/*
+ * @title: DecentralizedStableCoin
+ * @author: Patrick "Long Course" Collins
+ * Collateral: Exogenous (ETH & BTC)
+ * Minting: Algorithmic
+ * Relative Stability: Pegged to USD
+ *
+ * This is the contract meant to be governed by DSCEngine. This contract is just the ERC20 implementation of our stablecoin system.
+ */
+contract DecentralizedStableCoin is ERC20Burnable {
+    constructor() ERC20("DecentralizedStableCoin", "DSC"){}
+}
+```
+
+Because we're inheriting ERC20Burnable, and it inherits ERC20, we need to satisfy the standard ERC20 constructor parameters within our contracts constructor. We've set the name `DecentralizedStableCoin` and the symbol `DSC`.
+
+All of the properties of our protocol are going to be governed ultimately by the DSCEngine.sol contract. Functionality like the stability mechanism, including minting and burning, need to be controlled by the DSCEngine to maintain the integrity of the stablecoin.
+
+In order to accomplish this, we're going to also inherit `Ownable` with DecentralizedStableCoin.sol. This will allow us to configure access control, assuring only our DSCEngine contract is authorized to call these functions.
+
+> ❗ **NOTE**
+> For version 5 of OpenZeppelin's Ownable contract, we need to pass an address
+> in the constructor. We have to modify our code to account for this when
+> running `forge build` so that our project will not error. Like this:
+> `constructor(address initialOwner) ERC20("DecentralizedStableCoin", "DSC")
+Ownable(initialOwner) {}`
+
+```js
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+
+...
+
+contract DecentralizedStableCoin is ERC20Burnable, Ownable {
+    constructor() ERC20("DecentralizedStableCoin", "DSC"){}
+}
+```
+
+The two major functions we're going to want the DSCEngine to control are of course the mint and burn functions. We can override the standard ERC20 functions with our own to assure this access control is in place.
+
+### Burn
+
+We can start by writing our burn function.
+
+```js
+function burn(uint256 _amount) external override onlyOwner{}
+```
+
+We're going to want to check for two things when this function is called.
+
+1. The amount burnt must not be less than zero
+2. The amount burnt must not be more than the user's balance
+
+We'll configure two custom errors for when these checks fail.
+
+```js
+contract DecentralizedStableCoin is ERC20Burnable, Ownable {
+    error DecentralizedStableCoin__MustBeMoreThanZero();
+    error DecentralizedStableCoin__BurnAmountExceedsBalance();
+
+    constructor() ERC20("DecentralizedStableCoin", "DSC"){}
+
+    function burn(uint256 _amount) external override onlyOwner{
+        uint256 balance = balanceOf(msg.sender);
+        if(_amount <= 0){
+            revert DecentralizedStableCoin__MustBeMoreThanZero();
+        }
+        if(balance < _amount){
+            revert DecentralizedStableCoin__BurnAmountExceedsBalance();
+        }
+    }
+}
+```
+
+The last thing we're going to do, assuming these checks pass, is burn the passed amount of tokens. We're going to do this by using the `super` keyword. This tells solidity to use the burn function of the parent class.
+
+```js
+function burn(uint256 _amount) external override onlyOwner{
+    uint256 balance = balanceOf(msg.sender);
+    if(_amount <= 0){
+        revert DecentralizedStableCoin__MustBeMoreThanZero();
+    }
+    if(balance < _amount){
+        revert DecentralizedStableCoin__BurnAmountExceedsBalance();
+    }
+    super.burn(_amount);
+}
+```
+
+### Mint
+
+The second function we'll need to override to configure access control on is going to be our mint function.
+
+```js
+function mint(address _to, uint256 _amount) external overrides onlyOwner returns(bool){
+}
+```
+
+So, in this function we want to configure a boolean return value which is going to represent if the mint/transfer was successful. Something we'll want to check is if the \_to argument being passed is address(0), in addition to assuring the amount minted is greater than zero.
+
+We'll of course want to revert with custom errors if these conditional checks fail.
+
+```js
+contract DecentralizedStableCoin is ERC20Burnable, Ownable {
+    error DecentralizedStableCoin__MustBeMoreThanZero();
+    error DecentralizedStableCoin__BurnAmountExceedsBalance();
+    error DecentralizedStableCoin__NotZeroAddress();
+
+    ...
+
+    function mint(address _to, uint256 _amount) external onlyOwner returns(bool){
+        if(_to == address(0)){
+            revert DecentralizedStableCoin__NotZeroAddress();
+        }
+        if(_amount <= 0){
+            revert DecentralizedStableCoin__MustBeMoreThanZero();
+        }
+        _mint(_to, amount)
+        return true;
+    }
+}
+```
+
+> ❗ **NOTE**
+> We don't need to override the mint function, we're just calling the \_mint function within DecentralizedStableCoin.sol.
+
+### Wrap Up
+
+Guess what? That's literally all there is to this contract, we're not going to do anything more here until we need to write some tests.
+
+Let's move on to the heart of this protocol, DSCEngine.sol, in the next lesson!
