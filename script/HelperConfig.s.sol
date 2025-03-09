@@ -24,7 +24,6 @@ contract HelperConfig is Script {
     constructor(){
         if(block.chainid == 11155111) activeNetworkConfig = getSepoliaEthConfig();
         else activeNetworkConfig = getOrCreateAnvilEthConfig();
-        
     }
     
     function getSepoliaEthConfig() public view returns (NetworkConfig memory) {
