@@ -2829,3 +2829,31 @@ forge test --mt testRevertsIfCollateralZero
 ```
 
 <img src='./images/defi-test-dscengine/defi-tests2.png' alt='defi-tests2' />
+
+## Create the depositAndMint function
+
+The parameters for our depositCollateralAndMintDsc function are going to be similar to what we've seen in depositCollateral.
+
+```js
+function depositCollateralAndMintDsc(address tokenCollateralAddress, uint256 amountCollateral, uint256 amountDscToMint){}
+```
+
+All we really need to do, in this function, is call our depositCollateral and mintDsc functions in sequence.
+
+> ❗ **NOTE**
+> Both `depositCollateral` and `mintDsc` are current `external` functions. Set them to `public` before proceeding!
+
+Because this is one of our main functions, we're absolutely going to add some NATSPEC.
+
+```js
+/*
+ * @param tokenCollateralAddress: the address of the token to deposit as collateral
+ * @param amountCollateral: The amount of collateral to deposit
+ * @param amountDscToMint: The amount of DecentralizedStableCoin to mint
+ * @notice: This function will deposit your collateral and mint DSC in one transaction
+ */
+function depositCollateralAndMintDsc(address tokenCollateralAddress, uint256 amountCollateral, uint256 amountDscToMint) external {
+    depositCollateral(tokenCollateralAddress, amountCollateral);
+    mintDsc(amountDscToMint);
+}
+```

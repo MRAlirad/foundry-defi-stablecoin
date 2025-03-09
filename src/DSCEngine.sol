@@ -79,13 +79,23 @@ contract DSCEngine is ReentrancyGuard {
     }
 
     //!  External Functions  !//
-    function depositCollateralAndMintDsc() external {}
+    
+    /*
+        * @param tokenCollateralAddress: the address of the token to deposit as collateral
+        * @param amountCollateral: The amount of collateral to deposit
+        * @param amountDscToMint: The amount of DecentralizedStableCoin to mint
+        * @notice: This function will deposit your collateral and mint DSC in one transaction
+    */
+    function depositCollateralAndMintDsc(address tokenCollateralAddress, uint256 amountCollateral, uint256 amountDscToMint) external {
+        depositCollateral(tokenCollateralAddress, amountCollateral);
+        mintDsc(amountDscToMint);
+    }
 
     /*
         * @param tokenCollateralAddress: The ERC20 token address of the collateral you're depositing
         * @param amountCollateral: The amount of collateral you're depositing
     */
-    function depositCollateral(address tokenCollateralAddress, uint256 amountCollateral) external moreThanZero(amountCollateral) isAllowedToken(tokenCollateralAddress) nonReentrant {
+    function depositCollateral(address tokenCollateralAddress, uint256 amountCollateral) public moreThanZero(amountCollateral) isAllowedToken(tokenCollateralAddress) nonReentrant {
         s_collateralDeposited[msg.sender][tokenCollateralAddress] += amountCollateral;
         emit CollateralDeposited(msg.sender, tokenCollateralAddress, amountCollateral);
         bool success = IERC20(tokenCollateralAddress).transferFrom(msg.sender, address(this), amountCollateral);
@@ -101,7 +111,7 @@ contract DSCEngine is ReentrancyGuard {
         * @param amountDscToMint: The amount of DSC you want to mint
         * @notice You can only mint DSC if you hav enough collateral
     */
-    function mintDsc(uint256 amountDscToMint) external moreThanZero(amountDscToMint) nonReentrant {
+    function mintDsc(uint256 amountDscToMint) public moreThanZero(amountDscToMint) nonReentrant {
         s_DSCMinted[msg.sender] += amountDscToMint;
 
         //* if they minted too much DSC
