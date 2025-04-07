@@ -1405,10 +1405,10 @@ function getUsdValue(address token, uint256 amount) public view returns(uint256)
 This is where our `Chainlink` price feeds come into play. We're going to need to import the `AggregatorV3Interface`, like we did in previous sections.
 
 ```js
-import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { DecentralizedStableCoin } from "./DecentralizedStableCoin.sol";
-import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import { ReentrancyGuard } from '@openzeppelin/contracts/security/ReentrancyGuard.sol';
+import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import { DecentralizedStableCoin } from './DecentralizedStableCoin.sol';
+import { AggregatorV3Interface } from '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
 ```
 
 > ❗ **NOTE**
@@ -1438,7 +1438,7 @@ function getUsdValue(address token, uint256 amount) public view returns(uint256)
 }
 ```
 
-This should return the latest price of our token, to 8 decimal places. We can verify the decimals returned by any given price feed by referencing the **[Chainlink Price Feed Contract Addresses](https://docs.chain.link/data-feeds/price-feeds/addresses?network=ethereum\&page=1)** page.
+This should return the latest price of our token, to 8 decimal places. We can verify the decimals returned by any given price feed by referencing the **[Chainlink Price Feed Contract Addresses](https://docs.chain.link/data-feeds/price-feeds/addresses?network=ethereum&page=1)** page.
 
 Now, we're unable to simply take this returned price and multiply it by our amount, the precision of both these values is going to be different, the amount passed to this function is expected to have 18 decimal places where as our price has only 8. To resolve this we'll need to multiple our price by `1e10`. Once our precision matches, we can multiple this by our amount, then divide by `1e18` to return a reasonably formatted number for USD units.
 
@@ -1512,7 +1512,6 @@ But, we now have a way to calculate the collateral value users hold, in USD.
 If you need to take some time to go through this a couple times, I don't blame you. We did some jumping around here, but compartmentalizing all of this logic into its own functions will be beneficial for us long term.
 
 This is the point where I would absolutely be screaming to write some tests, we've got some entwined functions and some math going on, these things definitely need to be checked. We'll hold off for now, let's get through a few more functions first.
-
 
 ```js
 // Layout of Contract:
@@ -1773,7 +1772,6 @@ Great work! This was just a short one to wrap up our minting logic, but we're ge
 In the next lesson we'll approach our deploy script to prepare ourselves to start testing.
 
 See you soon!
-
 
 ```js
 // Layout of Contract:
@@ -2129,7 +2127,6 @@ Another function down! We're killing it. We should assure things are compiling p
 
 In the next lesson, we finish the `mintDsc` function! See you there!
 
-
 ```js
 // Layout of Contract:
 // version
@@ -2448,8 +2445,8 @@ int256 public constant BTC_USD_PRICE = 1000e8;
 Additionally, notice that we're employing the `MockV3Aggregator` as well as some `ERC20Mock`s in this function. Be sure to create the file `test/mocks/MockV3Aggregator.sol` and import it and the ERC20Mock library from OpenZeppelin into our deploy script. You can copy the version of this mock I've provided below, into your file.
 
 ```js
-import { MockV3Aggregator } from "../test/mocks/MockV3Aggregator.sol";
-import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
+import { MockV3Aggregator } from '../test/mocks/MockV3Aggregator.sol';
+import { ERC20Mock } from '@openzeppelin/contracts/mocks/ERC20Mock.sol';
 ```
 
 <details>
@@ -2536,11 +2533,11 @@ Once mocks are deployed, we can configure the anvilNetworkConfig with those depl
 
 ```js
 anvilNetworkConfig = NetworkConfig({
-  wethUsdPriceFeed: address(ethUsdPriceFeed), // ETH / USD
-  weth: address(wethMock),
-  wbtcUsdPriceFeed: address(btcUsdPriceFeed),
-  wbtc: address(wbtcMock),
-  deployerKey: DEFAULT_ANVIL_PRIVATE_KEY,
+	wethUsdPriceFeed: address(ethUsdPriceFeed), // ETH / USD
+	weth: address(wethMock),
+	wbtcUsdPriceFeed: address(btcUsdPriceFeed),
+	wbtc: address(wbtcMock),
+	deployerKey: DEFAULT_ANVIL_PRIVATE_KEY,
 });
 ```
 
@@ -2707,10 +2704,10 @@ contract DeployDSC is Script {
 
 Now, back to our test. We'll need to do a few things in `DSCEngineTest.t.sol`.
 
-* Import our `HelperConfig`
-* Declare state variables for `HelperConfig`, weth and `ethUsdPriceFeed`
-* Acquire the imported config from our `deployer.run` call
-* Acquire `ethUsdPriceFeed` and weth from our `config`'s `activeNetworkConfig`
+-   Import our `HelperConfig`
+-   Declare state variables for `HelperConfig`, weth and `ethUsdPriceFeed`
+-   Acquire the imported config from our `deployer.run` call
+-   Acquire `ethUsdPriceFeed` and weth from our `config`'s `activeNetworkConfig`
 
 ```js
 // SPDX-License-Identifier: MIT
@@ -2983,11 +2980,11 @@ Users who assist the protocol by liquidating unhealthy positions will be rewarde
 
 To illustrate:
 
-* User deposited $100 in collateral and mints $50 in `DSC`
-* Collateral value falls to \$75, breaking the user's `Health Factor` (0.75)
-* A `liquidator` burns \$50 in `DSC` to close the position
-* The `liquidator` is rewarded \$75 in collateral
-* The `liquidator` has profited \$25
+-   User deposited $100 in collateral and mints $50 in `DSC`
+-   Collateral value falls to \$75, breaking the user's `Health Factor` (0.75)
+-   A `liquidator` burns \$50 in `DSC` to close the position
+-   The `liquidator` is rewarded \$75 in collateral
+-   The `liquidator` has profited \$25
 
 Let's write this out.
 
@@ -3041,10 +3038,10 @@ error DSCEngine__HealthFactorOk();
 
 Our next step in the `liquidate` function is to remove the unhealthy position from the protocol, to do this we'll have to:
 
-* burn the `DSC` debt being covered by the `liquidator` (not all of a position needs to be liquidated)
-* calculate how much of the passes collateral type equates to the USD value of the debt being covered
-* transfer the calculated amount of the passed collateral type to the `liquidator`
-* updated internal accounting/balances
+-   burn the `DSC` debt being covered by the `liquidator` (not all of a position needs to be liquidated)
+-   calculate how much of the passes collateral type equates to the USD value of the debt being covered
+-   transfer the calculated amount of the passed collateral type to the `liquidator`
+-   updated internal accounting/balances
 
 We'll need a new function to calculate this token amount, but we'll get to that next.
 
@@ -3667,9 +3664,9 @@ We can see in the output the two subsequent function calls that lead to our inva
 
 In a real smart contract scenario, the invariant may actually be the most difficult thing to determine. It's unlikely to be something as simple as x shouldn't be zero, it might be something like
 
-* `newTokensMinted < inflation rate`
-* A lottery should only have 1 winner
-* A user can only withdraw what they deposit
+-   `newTokensMinted < inflation rate`
+-   A lottery should only have 1 winner
+-   A user can only withdraw what they deposit
 
 Practice and experience will lend themselves to identifying protocol invariants in time, but this is something you should keep in the back of your mind throughout development.
 
@@ -3863,13 +3860,219 @@ _**Why are all the calls reverting?**_
 
 Without any guidance, Foundry is going to throw truly random data at the function calls. For example, our `depositCollateral` function is only configured to accept the two authorized tokens for our protocol, wbtc and weth, the fuzzer could be calling this function with thousands of invalid addresses.
 
-fail\_on\_revert can be great for quick testing and keeping things simple, but it can be difficult to narrow the validity of our runs when this is set to `false`.
+fail_on_revert can be great for quick testing and keeping things simple, but it can be difficult to narrow the validity of our runs when this is set to `false`.
 
 Let's set this option to `true` and run our test once more.
-
 
 <img src='./images/fuzz-tests/defi-handler-stateful-fuzz-tests6.png' alt='defi-handler-stateful-fuzz-tests6' />
 
 We can see the first function being called by the fuzzer is `depositCollateral` and its passing a random `tokenAddress` argument causing our revert immediately.
 
 <img src='./images/fuzz-tests/defi-handler-stateful-fuzz-tests7.png' alt='defi-handler-stateful-fuzz-tests7' />
+
+## Defi Handler Deposit Collateral
+
+Ok! In this lesson we're going to adjust the code in our Invariants.t.sol such that our tests are more focused by being routed through a handler contract. In so doing, our tests will have a more sensible order of functions to call and more contextually relevant random data.
+
+We'll start by creating the Handler.t.sol contract.
+
+```solidity
+// SPDX-License-Identifier: MIT
+
+pragma solidity 0.8.18;
+
+import {Test} from "forge-std/Test.sol";
+
+contract Handler is Test {}
+```
+
+So, what's one of the first things we want to ensure in our handler? How about we tell our framework not to call redeemCollateral unless there's collateral available to redeem. Sounds like a sensible condition.
+
+Because our test function calls are being routed through our Handler, the first thing we should do is make sure our Handler has access to the contracts it'll need to call functions on. Let's import DSCEngine and DecentralizedStableCoin then set these up in our Handler's constructor
+
+```solidity
+// SPDX-License-Identifier: MIT
+
+pragma solidity 0.8.18;
+
+import {Test} from "forge-std/Test.sol";
+import {DSCEngine} from "../../src/DSCEngine.sol";
+import {DecentralizedStableCoin} from "../../src/DecentralizedStableCoin.sol";
+
+contract Handler is Test {
+    DSCEngine dsce;
+    DecentralizedStableCoin dsc;
+
+    constructor(DSCEngine _engine, DecentralizedStableCoin _dsc) {
+        dsce = _engine;
+        dsc = _dsc;
+    }
+}
+```
+
+We know that before `redeemCollateral` is a valid function call, collateral would need to be deposited, so let's begin with writing a `depositCollateral` function. This will work a little differently from our previous fuzz tests, but we're still able to pass arguments to this function which will be randomized by the fuzzer.
+
+```solidity
+function depositCollateral(uint256 collateral, uint256 amountCollateral) public {
+    dsce.depositCollateral(collateral, amountCollateral);
+}
+```
+
+Now, the function above is going to fail, and it's going to fail for the same reason our last fuzzing test failed, the `collateral` argument is going to be randomized to a bunch of unauthorized token addresses! In addition to this, `amountCollateral` could _also_ break, because `depositCollateral` reverts on zero!
+
+Despite these issues, let's adjust our Invariants.t.sol and try this out.
+
+Within Invariants.t.sol, import our new Handler contract, declare it, and then set our target to `address(handler)`. Now, if we run our test again, it's going to call only the functions available to our handler.
+
+```solidity
+// SPDX-License-Identifier: MIT
+
+pragma solidity 0.8.18;
+
+import {Test, console} from "forge-std/Test.sol";
+import {StdInvariant} from "forge-std/StdInvariant.sol";
+import {DeployDSC} from "../../script/DeployDSC.s.sol";
+import {DSCEngine} from "../../src/DSCEngine.sol";
+import {DecentralizedStableCoin} from "../../src/DecentralizedStableCoin.sol";
+import {HelperConfig} from "../../script/HelperConfig.s.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+contract InvariantsTest is StdInvariant Test {
+    DeployDSC deployer;
+    DSCEngine dsce;
+    DecentralizedStableCoin dsc;
+    HelperConfig config;
+    address weth;
+    address wbtc;
+
+    function setUp() external {
+        deployer = new DeployDSC();
+        (dsc, dsce, config) = deployer.run();
+        (,,weth, wbtc, ) = config.activeNetworkConfig();
+        targetContract(address(dsce));
+    }
+
+    function invariant_protocolMustHaveMoreValueThanTotalSupply() public view {
+        uint256 totalSupply = dsc.totalSupply();
+        uint256 totalWethDeposited = IERC20(weth).balanceOf(address(dsce));
+        uint256 totalWbtcDeposited = IERC20(wbtc).balanceOf(address(dsce));
+
+        uint256 wethValue = dsce.getUsdValue(weth, totalWethDeposited);
+        uint256 wbtcValue = dsce.getUsdValue(wbtc, totalWbtcDeposited);
+
+        console.log("totalSupply: ", totalSupply);
+        console.log("wethValue: ", wethValue);
+        console.log("wbtcValue: ", wbtcValue);
+
+        assert(wethValue + wbtcValue >= totalSupply);
+    }
+}
+```
+
+We can see this fails for the expected reasons below.
+
+<img src="./images/defi-handler-redeem-collateral/defi-handler-redeem-collateral1.png" alt="defi-handler-redeem-collateral1" />
+
+Let's use our Handler to ensure that only _valid_ collateral is deposited. Begin by importing ERC20Mock as we'll need this for our collateral types. In our constructor, we can leverage the getCollateralTokens function added to DSCEngine.sol.
+
+```solidity
+...
+import {ERC20Mock} from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
+
+contract Handler is Test {
+    DSCEngine dsce;
+    DecentralizedStableCount dsc;
+
+    ERC20Mock weth;
+    ERC20Mock wbtc;
+
+    constructor(DSCEngine _engine, DecentralizedStableCoin _dsc) {
+        dsce = _engine;
+        dsc = _dsc;
+
+        address[] memory collateralTokens = dsce.getCollateralTokens();
+        weth = ERC20Mock(collateralTokens[0]);
+        wbtc = ERC20Mock(collateralTokens[1]);
+    }
+```
+
+With these, instead of passing any address as collateral to our depositCollateral functional, we can instead pass a uint256 collateralSeed. We'll next write a function which picks a collateral to deposit from our valid options based on the seed our framework supplies.
+
+```solidity
+// Helper Functions
+function _getCollateralFromSeed(uint256 collateralSeed) private view returns (ERC20Mock){
+    if(collateralSeed % 2 == 0){
+        return weth;
+    }
+    return wbtc;
+}
+```
+
+Now, in our depositCollateral function, we can derive which collateral token should be used by calling this function and passing the random seed our framework supplies the test.
+
+```solidity
+function depositCollateral (uint256 collateralSeed, uint256 amountCollateral) public {
+    ERC20Mock collateral = _getCollateralFromSeed(collateralSeed);
+    dsce.depositCollateral(address(collateral), amountCollateral);
+}
+```
+
+Now our test should only call this Handler function with valid collateral addresses! Let's run it and see what happens.
+
+```bash
+forge test --mt invariant_ProtocolTotalSupplyLessThanCollateralValue -vvvv
+```
+
+<img src="./images/defi-handler-redeem-collateral/defi-handler-redeem-collateral2.png" alt="defi-handler-redeem-collateral2" />
+
+Look! Our address passed is valid, but we're getting a different error `DSCEngine__NeedsMoreThanZero()`. This is actually great progress and shows we've accounted for at least some of the causes of our reverts.
+
+<img src="./images/defi-handler-redeem-collateral/defi-handler-redeem-collateral3.png" alt="defi-handler-redeem-collateral3" />
+
+Let's keep narrowing the focus of our tests and the validity of our data.
+
+> ❗ **IMPORTANT**
+> Be careful when configuring fail*on\_revert to be true \_or* false. Sometimes we risk narrowing our tests too much with our Handler that we miss edge cases.
+
+In the same way we narrowed our test to provide a valid collateral type, we can bind the `amountCollateral` being passed to our function in order to ensure this is greater than 0 and avoid this error. StdUtils has a function we can use called `bound`.
+
+```solidity
+function depositCollateral (uint256 collateralSeed, uint256 amountCollateral) public {
+    amountCollateral = bound(amountCollateral, 1, MAX_DEPOSIT_SIZE);
+    ERC20Mock collateral = _getCollateralFromSeed(collateralSeed);
+    dsce.depositCollateral(address(collateral), amountCollateral);
+}
+```
+
+We can declare a MAX\_DEPOSIT\_SIZE constant at the top of our contract. I like to set this to something like type(uint96).max. This will provide a huge number without risking the overflow possible with uint256.
+
+```solidity
+uint256 MAX_DEPOSIT_SIZE = type(uint96).max;
+```
+
+<img src="./images/defi-handler-redeem-collateral/defi-handler-redeem-collateral4.png" alt="defi-handler-redeem-collateral4" />
+
+Not a massive change, but we _have_ made progress on the number of reverts our function it hitting. Running the test again with `fail_on_revert` set to true should reveal what's causing our reverts now.
+
+<img src="./images/defi-handler-redeem-collateral/defi-handler-redeem-collateral5.png" alt="defi-handler-redeem-collateral5" />
+
+Well, of course this is going to revert! We haven't set an allowance on our tokens! Let's remedy this by leveraging vm.prank in our Handler to ensure appropriate addresses are approved for our deposit function.
+
+```solidity
+function depositCollateral(uint256 collateralSeed, uint256 amountCollateral) public {
+    amountCollateral = bound(amountCollateral, 1, MAX_DEPOSIT_SIZE);
+    ERC20Mock collateral = _getCollateralFromSeed(collateralSeed);
+
+    // mint and approve!
+    vm.startPrank(msg.sender);
+    collateral.mint(msg.sender, amountCollateral);
+    collateral.approve(address(engine), amountCollateral);
+
+    engine.depositCollateral(address(collateral), amountCollateral);
+    vm.stopPrank();
+}
+```
+
+If we run our test now\...
+
+<img src="./images/defi-handler-redeem-collateral/defi-handler-redeem-collateral6.png" alt="defi-handler-redeem-collateral6" />
