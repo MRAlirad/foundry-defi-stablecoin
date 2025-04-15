@@ -4032,7 +4032,7 @@ Look! Our address passed is valid, but we're getting a different error `DSCEngin
 Let's keep narrowing the focus of our tests and the validity of our data.
 
 > ❗ **IMPORTANT**
-> Be careful when configuring fail*on\_revert to be true \_or* false. Sometimes we risk narrowing our tests too much with our Handler that we miss edge cases.
+> Be careful when configuring fail*on_revert to be true \_or* false. Sometimes we risk narrowing our tests too much with our Handler that we miss edge cases.
 
 In the same way we narrowed our test to provide a valid collateral type, we can bind the `amountCollateral` being passed to our function in order to ensure this is greater than 0 and avoid this error. StdUtils has a function we can use called `bound`.
 
@@ -4044,7 +4044,7 @@ function depositCollateral (uint256 collateralSeed, uint256 amountCollateral) pu
 }
 ```
 
-We can declare a MAX\_DEPOSIT\_SIZE constant at the top of our contract. I like to set this to something like type(uint96).max. This will provide a huge number without risking the overflow possible with uint256.
+We can declare a MAX_DEPOSIT_SIZE constant at the top of our contract. I like to set this to something like type(uint96).max. This will provide a huge number without risking the overflow possible with uint256.
 
 ```solidity
 uint256 MAX_DEPOSIT_SIZE = type(uint96).max;
@@ -4346,7 +4346,7 @@ When updateCollateralPrice was called, the price was updated to a number so low 
 
 This is legitimately a concerning vulnerability of this protocol. Effectively, if the USD value of our deposited collateral tanks too quickly, the protocol will become under-collateralized.
 
-Because we've declared our thresholds as a LIQUIDATION\_THRESHOLD of 50 and a LIQUIDATION\_BONUS of 10, we're defining our protocol's safe operational parameters as being between 200% and 110% over-collateralization. Too rapid a change in the value of our collateral jeopardizes this range.
+Because we've declared our thresholds as a LIQUIDATION_THRESHOLD of 50 and a LIQUIDATION_BONUS of 10, we're defining our protocol's safe operational parameters as being between 200% and 110% over-collateralization. Too rapid a change in the value of our collateral jeopardizes this range.
 
 ### Wrap Up
 
@@ -4371,7 +4371,6 @@ We're almost done with this section! There are 3 more things we should cover:
 3. Smart Contract Audit Preparation
 
 The finish line is close, let's keep going!
-
 
 There are a few assumptions that the `DecentralizedStableCoin` protocol is making that may lead to unexpected vulnerabilities. One of which is our use of an oracle for price feeds.
 
@@ -4597,3 +4596,36 @@ Beyond this, those who are really serious about launching a protocol, be sure to
 
 With that said, let's recap everything we've gone over in the next lesson!
 
+## DeFi Recap
+
+Wow, we've done it. This project was enormous, advanced and frankly intense. You should 1000% push this to your GitHub repo and be incredibly proud of yourself for completing this journey.
+
+This is one of the hardest and most complicated projects you'll find in educational content in Web3. We've learnt about:
+
+-   DeFi
+-   State of the art fuzz testing methodologies
+-   Safe use of oracles
+-   multifaceted test suites
+-   integration and deployment through scripts
+    ...and more!
+
+Since the filming of this course I've had the `DecentralizedStableCoin` protocol audited on `CodeHawks`. You can find the **[audit report for the contest here](https://www.codehawks.com/contests/cljx3b9390009liqwuedkn0m0)**.
+
+I encourage you to dive into the findings submitted by the Hawks, if security or auditing is your end goal, this kind of review and research will be invaluable.
+
+After all of this, you know what time it is: **BREAK TIME**. You deserve it, and when you come back there'll be a tonne more content to move onto next.
+
+We have 3 lessons remaining in this section, and they'll be a breeze compared to this one.
+
+See you soon!
+
+### Exercises
+
+**[Arbitrum NFT Challenge](https://arbiscan.io/address/0x3DbBF2F9AcFB9Aac8E0b31563dd75a2D69148D64#code)**
+
+**[Sepolia NFT Challenge](https://sepolia.etherscan.io/address/0xe5760847db2f10A74Fc575B4803df5fe129811C1#code)**
+
+Additional DeFi Learnings:
+
+-   **[DeFi-Minimal](https://github.com/smartcontractkit/defi-minimal/tree/main/contracts)**
+-   **[DeFi Dad](https://www.youtube.com/channel/UCatItl6C7wJp9txFMbXbSTg)**
