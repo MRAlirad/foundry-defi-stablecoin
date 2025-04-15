@@ -4076,3 +4076,61 @@ function depositCollateral(uint256 collateralSeed, uint256 amountCollateral) pub
 If we run our test now\...
 
 <img src="./images/defi-handler-redeem-collateral/defi-handler-redeem-collateral6.png" alt="defi-handler-redeem-collateral6" />
+
+## Create the mint handler
+
+In the last lesson our stateful fuzz tests were looking great, _but_ the validity of our tests was a little questionable because we haven't configured a way to mint any DSC during our tests. Because our totalSupply was always zero, changes to our collateral value were never going to violate our invariant.
+
+Let's change that now by writing a mintDsc function for our Handler.
+
+```solidity
+function mintDsc(uint256 amount) public {}
+```
+
+To constrain our tests, there are a couple things to consider. Namely, we know the `amount` argument needs to be greater than zero or this function will revert with `DSCEngine__NeedsMoreThanZero`. So let's account for that by binding this value.
+
+```solidity
+function mintDsc(uint256 amount) public {
+    amount = bound(amount, 1, MAX_DEPOSIT_SIZE);
+    vm.startPrank(msg.sender);
+    dcse.mintDsc(amount);
+    vm.stopPrank();
+}
+```
+
+Another consideration for this function is that it will revert if the Health Factor of the user is broken. We _could_ account for this in our function by assuring that's never the case, but this is an example of a situation you may want to avoid over-narrowing your test focus. We _want_ this function to revert if the Health Factor is broken, so in this case we'd likely just set `fail_on_revert` to `false`.
+
+Situations like this will often lead developers to split their test suite into scenarios where `fail_on_revert` is appropriately false, and scenarios where `fail_on_revert` should be true. This allows them to cover all their bases.
+
+Let's run our function and see how things look.
+
+```bash
+forge test --mt invariant_ProtocolTotalSupplyLessThanCollateralValue
+```
+
+> ❗ **NOTE**
+> The `totalSupply = 0` here because of a mistake we made, we'll fix it soon!
+
+Ok, so things work when we have `fail_on_revert` set to `false`. We want our tests to be quite focused, so moving forward we'll leave `fail_on_revert` to `true`. What happens when we run it now?
+
+As expected, our user's Health Factor is breaking. This is because we haven't considered _who_ is minting our DSC with respect to who has deposited collateral. We can account for this in our test by ensuring that the user doesn't attempt to mint more than the collateral they have deposited, otherwise we'll return out of the function. We'll determine the user's amount to mint by calling our `getAccountInformation` function.
+
+```solidity
+function mintDsc(uint256 amount) public {
+    (uint256 totalDscMinted, uint256 collateralValueInUsd) = dsce.getAccountInformation(msg.sender);
+
+    uint256 maxDscToMint = (collateralValueInUsd / 2) - totalDscMinted;
+    if(maxDscToMint < 0){
+        return;
+    }
+
+    amount = bound(amount, 0, maxDscToMint);
+    if(amount < 0){
+        return;
+    }
+
+    vm.startPrank(msg.sender);
+    dsce.mintDsc(amount);
+    vm.stopPrank();
+}
+```
