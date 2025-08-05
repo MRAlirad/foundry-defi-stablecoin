@@ -25,7 +25,7 @@ contract HelperConfig is Script {
         if(block.chainid == 11155111) activeNetworkConfig = getSepoliaEthConfig();
         else activeNetworkConfig = getOrCreateAnvilEthConfig();
     }
-    
+
     function getSepoliaEthConfig() public view returns (NetworkConfig memory) {
         return NetworkConfig({
             wethUsdPriceFeed: 0x694AA1769357215DE4FAC081bf1f309aDC325306, // ETH / USD
@@ -35,11 +35,12 @@ contract HelperConfig is Script {
             deployerKey: vm.envUint("PRIVATE_KEY")
         });
     }
-    
+
     function getOrCreateAnvilEthConfig() public returns (NetworkConfig memory) {
+        // Check to see if we set an active network config
         if(activeNetworkConfig.wethUsdPriceFeed != address(0)) 
             return activeNetworkConfig;
-        
+
         vm.startBroadcast();
         MockV3Aggregator ethUsdPriceFeed = new MockV3Aggregator(DECIMAL, ETH_USD_PRICE);
         ERC20Mock wethMock = new ERC20Mock("WETH", "WETH", msg.sender, 1000e8);
@@ -48,6 +49,7 @@ contract HelperConfig is Script {
         ERC20Mock wbtcMock = new ERC20Mock("WBTC", "WBTC", msg.sender, 1000e8);
 
         vm.stopBroadcast();
+
         return NetworkConfig({
             wethUsdPriceFeed : address(ethUsdPriceFeed),
             wbtcUsdPriceFeed : address(btcUsdPriceFeed),

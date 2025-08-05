@@ -140,8 +140,8 @@ contract DSCEngine is ReentrancyGuard {
         _revertIfHealthFactorIsBroken(msg.sender);
         bool minted = i_dsc.mint(msg.sender, amountDscToMint);
         if(!minted) revert DSCEngine__MintFailed();
-        
-        _revertIfHealthFactorIsBroken(msg.sender);
+
+        _revertIfHealthFactorIsBroken(msg.sender); //! is it needed?
     }
 
     function burnDsc(uint256 amount) public moreThanZero(amount) {

@@ -1269,286 +1269,6 @@ contract DSCEngine is ReentrancyGuard {
 }
 ```
 
-## Finishing mintDsc
-
-Ok, where were we!? We went down several rabbit holes all in effort of determining if a user should be able to call `mintDsc`. Let's get back to that function now and finish it off.
-
-```solidity
-function mintDsc(uint256 amountDscToMint) external moreThanZero(amountDscToMint) nonReentrant {
-    s_DSCMinted[msg.sender] += amountDscToMint;
-    _revertIfHealthFactorIsBroken(msg.sender);
-}
-```
-
-To this point, our function is adding the amount requested to mint to the user's balance. We're then checking if this new balance is breaking the user's `Health Factor`, and if so, we're reverting. If this function _doesn't_ revert - it's time to mint!
-
-```solidity
-function mintDsc(uint256 amountDscToMint) external moreThanZero(amountDscToMint) nonReentrant {
-    s_DSCMinted[msg.sender] += amountDscToMint;
-    _revertIfHealthFactorIsBroken(msg.sender);
-    bool minted = i_dsc.mint(msg.sender, amountDscToMint);
-}
-```
-
-Our `mint` function returns a bool and takes `_to` and `_amount` parameters. We can use this bool to revert if minting our DSC fails for some reason.
-
-```solidity
-function mintDsc(uint256 amountDscToMint) external moreThanZero(amountDscToMint) nonReentrant {
-    s_DSCMinted[msg.sender] += amountDscToMint;
-    _revertIfHealthFactorIsBroken(msg.sender);
-    bool minted = i_dsc.mint(msg.sender, amountDscToMint);
-
-    if(!minted){
-        revert DSCEngine__MintFailed();
-    }
-}
-```
-
-Lastly, add our new custom error to the appropriate section at the top of the contract:
-
-```solidity
-///////////////////
-//     Errors    //
-///////////////////
-
-error DSCEngine__TokenAddressesAndPriceFeedAddressesAmountsDontMatch();
-error DSCEngine__NeedsMoreThanZero();
-error DSCEngine__TokenNotAllowed(address token);
-error DSCEngine__TransferFailed();
-error DSCEngine__BreaksHealthFactor(uint256 healthFactor);
-error DSCEngine__MintFailed();
-```
-
-### Wrap Up
-
-Great work! This was just a short one to wrap up our minting logic, but we're getting really close to testing time.
-
-In the next lesson we'll approach our deploy script to prepare ourselves to start testing.
-
-See you soon!
-
-```solidity
-// Layout of Contract:
-// version
-// imports
-// errors
-// interfaces, libraries, contracts
-// Type declarations
-// State variables
-// Events
-// Modifiers
-// Functions
-
-// Layout of Functions:
-// constructor
-// receive function (if exists)
-// fallback function (if exists)
-// external
-// public
-// internal
-// private
-// internal & private view & pure functions
-// external & public view & pure functions
-
-// SPDX-License-Identifier: MIT
-
-pragma solidity 0.8.18;
-
-import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { DecentralizedStableCoin } from "./DecentralizedStableCoin.sol";
-import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
-
-/*
- * @title DSCEngine
- * @author Patrick Collins
- *
- * The system is designed to be as minimal as possible, and have the tokens maintain a 1 token == $1 peg at all times.
- * This is a stablecoin with the properties:
- * - Exogenously Collateralized
- * - Dollar Pegged
- * - Algorithmically Stable
- *
- * It is similar to DAI if DAI had no governance, no fees, and was backed by only WETH and WBTC.
- *
- * Our DSC system should always be "overcollateralized". At no point, should the value of
- * all collateral < the $ backed value of all the DSC.
- *
- * @notice This contract is the core of the Decentralized Stablecoin system. It handles all the logic
- * for minting and redeeming DSC, as well as depositing and withdrawing collateral.
- * @notice This contract is based on the MakerDAO DSS system
- */
-contract DSCEngine is ReentrancyGuard {
-
-    ///////////////////
-    //     Errors    //
-    ///////////////////
-
-    error DSCEngine__TokenAddressesAndPriceFeedAddressesAmountsDontMatch();
-    error DSCEngine__NeedsMoreThanZero();
-    error DSCEngine__TokenNotAllowed(address token);
-    error DSCEngine__TransferFailed();
-    error DSCEngine__BreaksHealthFactor(uint256 healthFactor);
-    error DSCEngine__MintFailed();
-
-    /////////////////////////
-    //   State Variables   //
-    /////////////////////////
-
-    mapping(address token => address priceFeed) private s_priceFeeds;
-    DecentralizedStableCoin private immutable i_dsc;
-    mapping(address user => mapping(address token => uint256 amount)) private s_collateralDeposited;
-    mapping(address user => uint256 amountDscMinted) private s_DSCMinted;
-    address[] private s_collateralTokens;
-
-    uint256 private constant ADDITIONAL_FEED_PRECISION = 1e10;
-    uint256 private constant PRECISION = 1e18;
-    uint256 private constant LIQUIDATION_THRESHOLD = 50;
-    uint256 private constant LIQUIDATION_PRECISION = 100;
-    uint256 private constant MIN_HEALTH_FACTOR = 1e18;
-
-    ////////////////
-    //   Events   //
-    ////////////////
-
-    event CollateralDeposited(address indexed user, address indexed token, uint256 indexed amount);
-
-    ///////////////////
-    //   Modifiers   //
-    ///////////////////
-
-    modifier moreThanZero(uint256 amount){
-        if(amount <=0){
-            revert DSCEngine__NeedsMoreThanZero();
-        }
-        _;
-    }
-
-    modifier isAllowedToken(address token) {
-        if (s_priceFeeds[token] == address(0)) {
-            revert DSCEngine__TokenNotAllowed(token);
-        }
-        _;
-    }
-
-    ///////////////////
-    //   Functions   //
-    ///////////////////
-
-    constructor(address[] memory tokenAddresses, address[] memory priceFeedAddresses, address dscAddress){
-        if(tokenAddresses.length != priceFeedAddresses.length){
-            revert DSCEngine__TokenAddressesAndPriceFeedAddressesMustBeSameLength();
-        }
-
-        for(uint256 i=0; i < tokenAddresses.length; i++){
-            s_priceFeeds[tokenAddresses[i]] = priceFeedAddresses[i];
-            s_collateralTokens.push(tokenAddresses[i]);
-        }
-        i_dsc = DecentralizedStableCoin(dscAddress);
-    }
-
-
-    ///////////////////////////
-    //   External Functions  //
-    ///////////////////////////
-
-    /*
-     * @param tokenCollateralAddress: The ERC20 token address of the collateral you're depositing
-     * @param amountCollateral: The amount of collateral you're depositing
-     */
-    function depositCollateral(
-        address tokenCollateralAddress,
-        uint256 amountCollateral
-    )
-        external
-        moreThanZero(amountCollateral)
-        nonReentrant
-        isAllowedToken(tokenCollateralAddress)
-    {
-        s_collateralDeposited[msg.sender][tokenCollateralAddress] += amountCollateral;
-        emit CollateralDeposited(msg.sender, tokenCollateralAddress, amountCollateral);
-        bool success = IERC20(tokenCollateralAddress).transferFrom(msg.sender, address(this), amountCollateral);
-        if (!success) {
-            revert DSCEngine__TransferFailed();
-        }
-    }
-
-    /*
-    * @param amountDscToMint: The amount of DSC you want to mint
-    * You can only mint DSC if you hav enough collateral
-    */
-    function mintDsc(uint256 amountDscToMint) external moreThanZero(amountDscToMint) nonReentrant {
-        s_DSCMinted[msg.sender] += amountDscToMint;
-        _revertIfHealthFactorIsBroken(msg.sender);
-        bool minted = i_dsc.mint(msg.sender, amountDscToMint);
-
-        if(!minted){
-            revert DSCEngine__MintFailed();
-        }
-    }
-
-    ///////////////////////////////////////////
-    //   Private & Internal View Functions   //
-    ///////////////////////////////////////////
-
-    /*
-    * Returns how close to liquidation a user is
-    * If a user goes below 1, then they can be liquidated.
-    */
-    function _healthFactor(address user) private view returns(uint256){
-        (uint256 totalDscMinted, uint256 collateralValueInUsd) = _getAccountInformation(user);
-
-        uint256 collateralAdjustedForThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
-
-        return (collateralAdjustedForThreshold * PRECISION) / totalDscMinted;
-    }
-
-    function _getAccountInformation(address user) private view returns(uint256 totalDscMinted,uint256 collateralValueInUsd){
-        totalDscMinted = s_DSCMinted[user];
-        collateralValueInUsd = getAccountCollateralValue(user);
-    }
-
-    function _revertIfHealthFactorIsBroken(address user) internal view {
-        uint256 userHealthFactor = _healthFactor(user);
-        if(userHealthFactor < MIN_HEALTH_FACTOR){
-            revert DSCEngine__BreaksHealthFactor(userHealthFactor);
-        }
-    }
-
-    //////////////////////////////////////////
-    //   Public & External View Functions   //
-    //////////////////////////////////////////
-
-    function getAccountCollateralValue(address user) public view returns (uint256 totalCollateralValueInUsd) {
-        for(uint256 i = 0; i < s_collateralTokens.length; i++){
-            address token = s_collateralTokens[i];
-            uint256 amount = s_collateralDeposited[user][token];
-            totalCollateralValueInUsd += getUsdValue(token, amount);
-        }
-        return totalCollateralValueInUsd;
-    }
-
-    function getUsdValue(address token, uint256 amount) public view returns(uint256){
-        AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
-        (,int256 price,,,) = priceFeed.latestRoundData();
-
-        return ((uint256(price) * ADDITIONAL_FEED_PRECISION) * amount) / PRECISION;
-    }
-
-    function depositCollateralAndMintDsc() external {}
-
-    function redeemCollateralForDsc() external {}
-
-    function redeemCollateral() external {}
-
-    function burnDsc() external {}
-
-    function liquidate() external {}
-
-    function getHealthFactor() external view {}
-}
-```
-
 ## Health Factor
 
 our `_healthFactor` function is only acquiring the user's `totalDscMinted` and the `collateralValueInUsd`.
@@ -1848,16 +1568,34 @@ contract DSCEngine is ReentrancyGuard {
 }
 ```
 
-## Deploy Script
+## Finishing mintDsc
 
-We've done a lot, so far and it's getting really complex. Now's a great time to perform a sanity check and write some tests.
+We're checking if this new balance is breaking the user's `Health Factor`, and if so, we're reverting. If this function _doesn't_ revert - it's time to mint!
 
-_I have no idea if what I'm doing makes any sort of sense. I want to make sure I write some tests here._
-
-Testing is crucial to ensure that our code is functioning as intended. Start by creating a new folder, `test/unit`. The tests we write are going to be integration tests, so lets prepare a deploy script. Create the file `script/DeployDSC.s.sol` as well. We should be well versed in setting up a deploy script at this point!
+Our `mint` function returns a bool and takes `_to` and `_amount` parameters. We can use this bool to revert if minting our DSC fails for some reason.
 
 ```solidity
-// SPDX-License-Identifier: UNLICENSED
+error DSCEngine__MintFailed();
+
+...
+
+function mintDsc(uint256 amountDscToMint) external moreThanZero(amountDscToMint) nonReentrant {
+    s_DSCMinted[msg.sender] += amountDscToMint;
+    _revertIfHealthFactorIsBroken(msg.sender);
+    bool minted = i_dsc.mint(msg.sender, amountDscToMint);
+
+    if(!minted){
+        revert DSCEngine__MintFailed();
+    }
+}
+```
+
+## Deploy Script
+
+Create the file `script/DeployDSC.s.sol` as well.
+
+```solidity
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
 import { Script } from "forge-std/Script.sol";
@@ -1865,7 +1603,6 @@ import { DecentralizedStableCoin } from "../src/DecentralizedStableCoin.sol";
 import { DSCEngine } from "../src/DSCEngine.sol";
 
 contract DeployDSC is Script {
-
     function run() external returns (DecentralizedStableCoin, DSCEngine) {}
 }
 ```
@@ -1874,19 +1611,18 @@ Beautiful, clean setup. In our run function we'll need to deploy both Decentrali
 
 ### HelperConfig
 
-Create a new file `script/HelperConfig.s.sol`. The boilerplate here is pretty standard.
+Create a new file `script/HelperConfig.s.sol`.
 
 ```solidity
 // SPDX-License-Identifier: MIT
+pragma solidity ^0.8.18;
 
 import { Script } from "forge-std/Script.sol";
-
-pragma solidity ^0.8.18;
 
 contract HelperConfig is Script {}
 ```
 
-Just like we did in previous lessons, we'll declare a NetworkConfig struct which contains a number of properties which will be determined by the network the transaction is placed on.
+We'll declare a NetworkConfig struct which contains a number of properties which will be determined by the network the transaction is placed on.
 
 ```solidity
 contract HelperConfig is Script {
@@ -1905,7 +1641,7 @@ contract HelperConfig is Script {
 }
 ```
 
-We can now start by writing the configuration for Sepolia, feel free to copy and paste the contract addresses I've compiled.
+We can now start by writing the configuration for Sepolia.
 
 ```solidity
 function getSepoliaEthConfig() public view returns (NetworkConfig memory sepoliaNetworkConfig) {
@@ -1919,33 +1655,33 @@ function getSepoliaEthConfig() public view returns (NetworkConfig memory sepolia
 }
 ```
 
-This is simple enough since most of the tokens we'll be working with have their own Sepolia deployments, but next we'll be setting up a configuration function for our local Anvil chain. We'll have additional considerations such as the need for mocks.
+Next we'll be setting up a configuration function for our local Anvil chain. We'll have additional considerations such as the need for mocks.
 
 What we can do, is start this function by checking if the activeNetworkConfig has one of our token price feeds, and if not, we'll assume we're on anvil and deploy our mocks.
 
 ```solidity
-function getOrCreateAnvilEthConfig() public returns (NetworkConfig memory anvilNetworkConfig) {
-    // Check to see if we set an active network config
-    if (activeNetworkConfig.wethUsdPriceFeed != address(0)) {
-        return activeNetworkConfig;
+constract HelperConfig is Script {
+    uint8 public constant DECIMALS = 8;
+    int256 public constant ETH_USD_PRICE = 2000e8;
+    int256 public constant BTC_USD_PRICE = 1000e8;
+
+    ...
+
+    function getOrCreateAnvilEthConfig() public returns (NetworkConfig memory anvilNetworkConfig) {
+        // Check to see if we set an active network config
+        if (activeNetworkConfig.wethUsdPriceFeed != address(0)) {
+            return activeNetworkConfig;
+        }
+
+        vm.startBroadcast();
+        MockV3Aggregator ethUsdPriceFeed = new MockV3Aggregator(DECIMALS, ETH_USD_PRICE);
+        ERC20Mock wethMock = new ERC20Mock("WETH", "WETH", msg.sender, 1000e8);
+
+        MockV3Aggregator btcUsdPriceFeed = new MockV3Aggregator(DECIMALS, BTC_USD_PRICE);
+        ERC20Mock wbtcMock = new ERC20Mock("WBTC", "WBTC", msg.sender, 1000e8);
+        vm.stopBroadcast();
     }
-
-    vm.startBroadcast();
-    MockV3Aggregator ethUsdPriceFeed = new MockV3Aggregator(DECIMALS, ETH_USD_PRICE);
-    ERC20Mock wethMock = new ERC20Mock("WETH", "WETH", msg.sender, 1000e8);
-
-    MockV3Aggregator btcUsdPriceFeed = new MockV3Aggregator(DECIMALS, BTC_USD_PRICE);
-    ERC20Mock wbtcMock = new ERC20Mock("WBTC", "WBTC", msg.sender, 1000e8);
-    vm.stopBroadcast();
 }
-```
-
-Be sure to declare your constants at the top of your script.
-
-```solidity
-uint8 public constant DECIMALS = 8;
-int256 public constant ETH_USD_PRICE = 2000e8;
-int256 public constant BTC_USD_PRICE = 1000e8;
 ```
 
 Additionally, notice that we're employing the `MockV3Aggregator` as well as some `ERC20Mock`s in this function. Be sure to create the file `test/mocks/MockV3Aggregator.sol` and import it and the ERC20Mock library from OpenZeppelin into our deploy script. You can copy the version of this mock I've provided below, into your file.
@@ -1955,21 +1691,18 @@ import { MockV3Aggregator } from '../test/mocks/MockV3Aggregator.sol';
 import { ERC20Mock } from '@openzeppelin/contracts/mocks/ERC20Mock.sol';
 ```
 
-<details>
-<summary>MockV3Aggregator.sol</summary>
-
 ```solidity
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 /**
- * @title MockV3Aggregator
- * @notice Based on the FluxAggregator contract
- * @notice Use this contract when you need to test
- * other contract's ability to read data from an
- * aggregator contract, but how the aggregator got
- * its answer is unimportant
- */
+    * @title MockV3Aggregator
+    * @notice Based on the FluxAggregator contract
+    * @notice Use this contract when you need to test
+    * other contract's ability to read data from an
+    * aggregator contract, but how the aggregator got
+    * its answer is unimportant
+*/
 contract MockV3Aggregator {
     uint256 public constant version = 0;
 
@@ -2033,8 +1766,6 @@ contract MockV3Aggregator {
 }
 ```
 
-</details>
-
 Once mocks are deployed, we can configure the anvilNetworkConfig with those deployed addresses, and return this struct.
 
 ```solidity
@@ -2056,7 +1787,7 @@ int256 public constant BTC_USD_PRICE = 1000e8;
 uint256 public constant DEFAULT_ANVIL_PRIVATE_KEY = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
 ```
 
-Great! With both of these functions written we can update our constructor to determine which function to call based on the block.chainid of our deployment.
+With both of these functions written we can update our constructor to determine which function to call based on the block.chainid of our deployment.
 
 ```solidity
 constructor() {
@@ -2067,8 +1798,6 @@ constructor() {
     }
 }
 ```
-
-With the HelperConfig complete, we can return to DeployDSC.s.sol. Please reference the **[HelperConfig.s.sol within the GitHub repo](https://github.com/Cyfrin/foundry-defi-stablecoin-f23/blob/main/script/HelperConfig.s.sol)** if thing's haven't worked for you, or won't compile at this point.
 
 ### Back to DeployDSC
 
@@ -2096,8 +1825,6 @@ contract DeployDSC is Script {
 With these values, we can now declare and assign our tokenAddresses and priceFeedAddresses arrays, and finally pass them to our deployments.
 
 ```solidity
-...
-
 address[] public tokenAddresses;
 address[] public priceFeedAddresses;
 
@@ -2116,7 +1843,7 @@ function run() external returns (DecentralizedStableCoin, DSCEngine) {
 }
 ```
 
-Things look amazing so far, but there's one last thing we haven't really talked about. I'd mentioned in earlier lessons that we intend the DSCEngine to own and manage the DecentralizedStableCoin assets. DecentralizedStableCoin.sol is Ownable, and by deploying it this way, our msg.sender is going to be the owner by default. Fortunately, the Ownable library comes with the function `transferOwnership`. We'll just need to assure this is called in our deploy script.
+DecentralizedStableCoin.sol is Ownable, and by deploying it this way, our msg.sender is going to be the owner by default. Fortunately, the Ownable library comes with the function `transferOwnership`. We'll just need to assure this is called in our deploy script.
 
 ```solidity
 function run() external returns (DecentralizedStableCoin, DSCEngine) {
@@ -2127,7 +1854,7 @@ function run() external returns (DecentralizedStableCoin, DSCEngine) {
     tokenAddresses = [weth, wbtc];
     priceFeedAddresses = [wethUsdPriceFeed, wbtcUsdPriceFeed];
 
-    vm.startBroadcast();
+    vm.startBroadcast(deployerKey);
     DecentralizedStableCoin dsc = new DecentralizedStableCoin();
     DSCEngine engine = new DSCEngine(tokenAddresses, priceFeedAddresses, address(dsc));
     dsc.transferOwnership(address(engine));
@@ -2137,16 +1864,10 @@ function run() external returns (DecentralizedStableCoin, DSCEngine) {
 ```
 
 ## Test the DSCEngine smart contract
-
-Welcome back! We've added a tonne of functions to our `DSCEngine.sol`, so we're at the point where we want to perform a sanity check and assure everything is working as intended so far.
-
-In the last lesson, we set up a deploy script as well as a `HelperConfig` to assist us in our tests. Let's get started!
-
-Create `test/unit/DSCEngine.t.sol` and begin with the boilerplate we're used to. We know we'll have to import our deploy script as well as `Test`, `DecentralizedStableCoin.sol`, and `DSCEngine.sol`.
+Create `test/unit/DSCEngineTest.t.sol` and begin with the boilerplate we're used to.
 
 ```solidity
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.18;
 
 import { DeployDSC } from "../../script/DeployDSC.s.sol";
@@ -2177,10 +1898,6 @@ contract DSCEngineTest is Test {
 I think a good place to start will be checking some of our math in `DSCEngine`. We should verify that we're pulling data from our price feeds properly and that our USD calculations are correct.
 
 ```solidity
-/////////////////
-// Price Tests //
-/////////////////
-
 function testGetUsdValue() public {}
 ```
 
@@ -2208,7 +1925,7 @@ contract DeployDSC is Script {
 }
 ```
 
-Now, back to our test. We'll need to do a few things in `DSCEngineTest.t.sol`.
+We'll need to do a few things in `DSCEngineTest.t.sol`.
 
 -   Import our `HelperConfig`
 -   Declare state variables for `HelperConfig`, weth and `ethUsdPriceFeed`
@@ -2217,7 +1934,6 @@ Now, back to our test. We'll need to do a few things in `DSCEngineTest.t.sol`.
 
 ```solidity
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.18;
 
 import { DeployDSC } from "../../script/DeployDSC.s.sol";
@@ -2245,10 +1961,6 @@ contract DSCEngineTest is Test {
 We're now ready to use some of these values in our test function. For our unit test, we'll be requesting the value of `15ETH`, or `15e18`. Our HelperConfig has the ETH/USD price configured at `$2000`. Thus we should expect `30000e18` as a return value from our getUsdValue function. Let's see if that's true.
 
 ```solidity
-/////////////////
-// Price Tests //
-/////////////////
-
 function testGetUsdValue() public {
     // 15e18 * 2,000/ETH = 30,000e18
     uint256 ethAmount = 15e18;
@@ -2258,17 +1970,13 @@ function testGetUsdValue() public {
 }
 ```
 
-When you're ready, let see how we've done!
+Let see how we've done!
 
 ```bash
 forge test --mt testGetUsdValue
 ```
 
-<img src='./images/defi-test-dscengine/defi-tests1.png' alt='defi-tests1' />
-
-It works! We're clearly still on track. This is great. It's good practice to test things as you go to avoid getting too far down the rabbit-hole of compounding errors. Sanity checks along the way like this can save you time in having to refactor and change a bunch of code later.
-
-Before moving on, we should write a test for our `depositCollateral` function as well. We'll need to import our `ERC20Mock` in order to test deposits, so let's do that now. We'll also need to declare a `USER` to call these functions with and amount for them to deposit.
+We should write a test for our `depositCollateral` function as well. We'll need to import our `ERC20Mock` in order to test deposits. We'll also need to declare a `USER` to call these functions with and amount for them to deposit.
 
 ```solidity
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
@@ -2283,10 +1991,6 @@ contract DSCEngineTest is Test {
     uint256 public constant AMOUNT_COLLATERAL = 10 ether;
 
     ...
-
-    /////////////////////////////
-    // depositCollateral Tests //
-    /////////////////////////////
 
     function testRevertsIfCollateralZero() public {}
 }
@@ -2311,10 +2015,6 @@ function setUp public {
 Our user is going to need to approve the `DSCEngine` contract to call `depositCollateral`. Despite this, we're going to deposit `0`. This _should_ cause our function call to revert with our custom error `DSCEngine__NeedsMoreThanZero`, which we'll account for with `vm.expectRevert`.
 
 ```solidity
- /////////////////////////////
-// depositCollateral Tests //
-/////////////////////////////
-
 function testRevertsIfCollateralZero() public {
     vm.startPrank(USER);
     ERC20Mock(weth).approve(address(dsce), AMOUNT_COLLATERAL);
@@ -2325,13 +2025,9 @@ function testRevertsIfCollateralZero() public {
 }
 ```
 
-Let's run it!
-
 ```bash
 forge test --mt testRevertsIfCollateralZero
 ```
-
-<img src='./images/defi-test-dscengine/defi-tests2.png' alt='defi-tests2' />
 
 ## Create the depositAndMint function
 
