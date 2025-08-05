@@ -1551,17 +1551,11 @@ contract DSCEngine is ReentrancyGuard {
 
 ## Health Factor
 
-In the previous lesson we walked through the mintDsc function and a _**bunch**_ of additional functions on which that operation depends. We briefly skimmed over the `Health Factor` of an account, and in this lesson we'll dive deeper into this concept and write the functions necessary to determine an account's `Health Factor`.
+our `_healthFactor` function is only acquiring the user's `totalDscMinted` and the `collateralValueInUsd`.
 
-So far, our `_healthFactor` function is only acquiring the user's `totalDscMinted` and the `collateralValueInUsd`. What we can now do, is take the ratio of these two.
-
-An account's `Health Factor` will be a bit more complex to consider than simply `collateralValueInUsd / totalDscMinted`. Remember, we want to assure the protocol is always `over-collateralized`, and to do this, there needs to be a threshold determined that this ratio needs to adhere to, 200% for example. We can set this threshold via a constant state variable.
+An account's `Health Factor` will be a bit more complex to consider than simply `collateralValueInUsd / totalDscMinted`. We want to assure the protocol is always `over-collateralized`, and to do this, there needs to be a threshold determined that this ratio needs to adhere to, 200% for example. We can set this threshold via a constant state variable.
 
 ```solidity
-/////////////////////////
-//   State Variables   //
-/////////////////////////
-
 mapping(address token => address priceFeed) private s_priceFeeds;
 DecentralizedStableCoin private immutable i_dsc;
 mapping(address user => mapping(address token => uint256 amount)) private s_collateralDeposited;
@@ -1578,8 +1572,8 @@ The threshold above, set at `50`, will assure a user's position is `200%` `over-
 
 ```solidity
 /*
-* Returns how close to liquidation a user is
-* If a user goes below 1, then they can be liquidated.
+    * Returns how close to liquidation a user is
+    * If a user goes below 1, then they can be liquidated.
 */
 function _healthFactor(address user) private view returns(uint256){
     (uint256 totalDscMinted, uint256 collateralValueInUsd) = _getAccountInformation(user);
@@ -1587,8 +1581,6 @@ function _healthFactor(address user) private view returns(uint256){
     uint256 collateralAdjustedForThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
 }
 ```
-
-Let's work this `Health Factor` calculation out mathematically with an example.
 
 Say a user deposits $150 worth of ETH and goes to mint $100 worth of DSC.
 
@@ -1609,10 +1601,6 @@ In the above example, a user who has deposited $150 worth of ETH would not be ab
 With a `LIQUIDATION_THRESHOLD` of 50, a user requires 200% over-collateralization of their position, or the risk liquidation. Now that we've adjusted our collateral amount to account for a position's `LIQUIDATION_THRESHOLD`, we can use this adjust value to calculate a user's true `Health Factor`.
 
 ```solidity
-/*
-* Returns how close to liquidation a user is
-* If a user goes below 1, then they can be liquidated.
-*/
 function _healthFactor(address user) private view returns(uint256){
     (uint256 totalDscMinted, uint256 collateralValueInUsd) = _getAccountInformation(user);
 
@@ -1630,7 +1618,7 @@ return (75 * 1e18) / 100e18
 return (0.75)
 ```
 
-Alright! Now, we've been talking about `Health Factors` which are `< 1` as being at risk of liquidation. We should set this constant officially with a state variable before moving on. We'll need it in our `_revertIfHealthFactorIsBroken` function.
+Now, we've been talking about `Health Factors` which are `< 1` as being at risk of liquidation. We should set this constant officially with a state variable before moving on. We'll need it in our `_revertIfHealthFactorIsBroken` function.
 
 ```solidity
 /////////////////////////
@@ -1653,59 +1641,23 @@ uint256 private constant MIN_HEALTH_FACTOR = 1e18;
 We're ready to put our `_healthFactor` function and our `MIN_HEALTH_FACTOR` constant to work. We can use these to declare a conditional statement within `_revertIfHealthFactorIsBroken`, which will revert with a custom error if the conditional fails to pass.
 
 ```solidity
+error DSCEngine__BreaksHealthFactor(uint256 healthFactor);
+
+...
+
 function _revertIfHealthFactorIsBroken(address user) internal view {
     uint256 userHealthFactor = _healthFactor(user);
+
     if(userHealthFactor < MIN_HEALTH_FACTOR){
         revert DSCEngine__BreaksHealthFactor(userHealthFactor);
     }
 }
 ```
 
-Don't forget to add the custom error to the top of our contract with the others.
+DSCEngine.sol contract so far:
 
 ```solidity
-///////////////////
-//     Errors    //
-///////////////////
-
-error DSCEngine__TokenAddressesAndPriceFeedAddressesAmountsDontMatch();
-error DSCEngine__NeedsMoreThanZero();
-error DSCEngine__TokenNotAllowed(address token);
-error DSCEngine__TransferFailed();
-error DSCEngine__BreaksHealthFactor(uint256 healthFactor);
-```
-
-### Wrap Up
-
-Another function down! We're killing it. We should assure things are compiling properly with `forge build`. If you run into any compilation errors, please reference the contract below which should reflect the state we're at currently.
-
-In the next lesson, we finish the `mintDsc` function! See you there!
-
-```solidity
-// Layout of Contract:
-// version
-// imports
-// errors
-// interfaces, libraries, contracts
-// Type declarations
-// State variables
-// Events
-// Modifiers
-// Functions
-
-// Layout of Functions:
-// constructor
-// receive function (if exists)
-// fallback function (if exists)
-// external
-// public
-// internal
-// private
-// internal & private view & pure functions
-// external & public view & pure functions
-
 // SPDX-License-Identifier: MIT
-
 pragma solidity 0.8.18;
 
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -1714,24 +1666,24 @@ import { DecentralizedStableCoin } from "./DecentralizedStableCoin.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 /*
- * @title DSCEngine
- * @author Patrick Collins
- *
- * The system is designed to be as minimal as possible, and have the tokens maintain a 1 token == $1 peg at all times.
- * This is a stablecoin with the properties:
- * - Exogenously Collateralized
- * - Dollar Pegged
- * - Algorithmically Stable
- *
- * It is similar to DAI if DAI had no governance, no fees, and was backed by only WETH and WBTC.
- *
- * Our DSC system should always be "overcollateralized". At no point, should the value of
- * all collateral < the $ backed value of all the DSC.
- *
- * @notice This contract is the core of the Decentralized Stablecoin system. It handles all the logic
- * for minting and redeeming DSC, as well as depositing and withdrawing collateral.
- * @notice This contract is based on the MakerDAO DSS system
- */
+    * @title DSCEngine
+    * @author Patrick Collins
+    *
+    * The system is designed to be as minimal as possible, and have the tokens maintain a 1 token == $1 peg at all times.
+    * This is a stablecoin with the properties:
+    * - Exogenously Collateralized
+    * - Dollar Pegged
+    * - Algorithmically Stable
+    *
+    * It is similar to DAI if DAI had no governance, no fees, and was backed by only WETH and WBTC.
+    *
+    * Our DSC system should always be "overcollateralized". At no point, should the value of
+    * all collateral < the $ backed value of all the DSC.
+    *
+    * @notice This contract is the core of the Decentralized Stablecoin system. It handles all the logic
+    * for minting and redeeming DSC, as well as depositing and withdrawing collateral.
+    * @notice This contract is based on the MakerDAO DSS system
+*/
 contract DSCEngine is ReentrancyGuard {
 
     ///////////////////

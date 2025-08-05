@@ -43,7 +43,7 @@ contract DSCEngine is ReentrancyGuard {
     uint256 private constant PRECISION = 1e18;
     uint256 private constant LIQUIDATION_THRESHOLD = 50;
     uint256 private constant LIQUIDATION_PRECISION = 100;
-    uint256 private constant MIN_HEALTH_FACTOR = 1e18;
+    uint256 private constant MIN_HEALTH_FACTOR = 1e18; //! or 1
     uint256 private constant LIQUIDATION_BONUS = 10; // 10 percent bonus
 
     mapping(address token => address priceFeed) private s_priceFeeds; // tokenToPriceFeed
@@ -215,8 +215,8 @@ contract DSCEngine is ReentrancyGuard {
         //* total DSC minted
         //* total collateral value
         (uint256 totalDscMinted, uint256 collateralValueInUsd) = _getAccountInformation(user);
-        uint256 collateralAdjuctedForThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
-        return (collateralAdjuctedForThreshold * PRECISION) / totalDscMinted;
+        uint256 collateralAdjustedForThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
+        return (collateralAdjustedForThreshold * PRECISION) / totalDscMinted;
     }
 
     function _revertIfHealthFactorIsBroken(address user) internal view {
