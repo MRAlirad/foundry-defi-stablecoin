@@ -762,7 +762,7 @@ contract DSCEngine {
 }
 ```
 
-DSCEngine.sol contract so far
+DSCEngine.sol contract so far:
 
 ```solidity
 // SPDX-License-Identifier: MIT
@@ -892,30 +892,19 @@ contract DSCEngine is ReentrancyGuard {
 
 ## Creating the mint function
 
-Now that we've a way to deposit collateral, the next logical step would be to mint DSC.
+There are a number of things we'll need to accomplish when minting our stablecoin. Primarily we'll need to check if the account's collateral value supports the amount of `DSC` being minted. To do this we'll need to engage `Chainlink` price feeds, do value conversions and more.
 
-The `mintDsc` function is likely going to be surprisingly complex. There are a number of things we'll need to accomplish when minting our stablecoin. Primarily we'll need to check if the account's collateral value supports the amount of `DSC` being minted. To do this we'll need to engage `Chainlink` price feeds, do value conversions and more. Let's get started.
-
-```js
-///////////////////////////
-//   External Functions  //
-///////////////////////////
-
-...
-
+```solidity
 /*
     * @param amountDscToMint: The amount of DSC you want to mint
     * You can only mint DSC if you hav enough collateral
-    */
+*/
 function mintDsc(uint256 amountDscToMint) public moreThanZero(amountDscToMint) nonReentrant {}
 ```
 
 We've added our modifiers to protect against reentrancy and constrain the `amountDscToMint` to being above zero. Much like we track the collateral a user has deposited, we'll also have to track the `DSC` which has been minted. Sounds like another mapping!
 
-```js
-/////////////////////////
-//   State Variables   //
-/////////////////////////
+```solidity
 
 mapping(address token => address priceFeed) private s_priceFeeds;
 DecentralizedStableCoin private immutable i_dsc;
@@ -925,11 +914,7 @@ mapping(address user => uint256 amountDscMinted) private s_DSCMinted;
 
 And now, in following `CEI (Checks, Effects, Interactions)`, we'll want to update the user's mapped balance to reflect the amount being minted in our function.
 
-```js
-/*
-    * @param amountDscToMint: The amount of DSC you want to mint
-    * You can only mint DSC if you hav enough collateral
-    */
+```solidity
 function mintDsc(uint256 amountDscToMint) public moreThanZero(amountDscToMint) nonReentrant {
     s_DSCMinted[msg.sender] += amountDscToMint;
 }
@@ -937,13 +922,7 @@ function mintDsc(uint256 amountDscToMint) public moreThanZero(amountDscToMint) n
 
 Our next step is something that will warrant it's own function, this is going to be something we check in a few placed in our protocol. We'll name the function `_revertIfHealthFactorIsBroken`. The purpose of this will be to assure that changes in a user's DSC or collateral balances don't result in the user's position being `under-collateralized`.
 
-We'll need a new section for this function, according to our contract layout guideline, so let's jump to it.
-
-```js
-///////////////////////////////////////////
-//   Private & Internal View Functions   //
-///////////////////////////////////////////
-
+```solidity
 function _revertIfHealthFactorIsBroken(address user){}
 ```
 
@@ -953,16 +932,12 @@ function _revertIfHealthFactorIsBroken(address user){}
 
 In addition to the above, we'll need a function which checks an account's `Health Factor`. Let's write that now.
 
-```js
-///////////////////////////////////////////
-//   Private & Internal View Functions   //
-///////////////////////////////////////////
-
+```solidity
 function _revertIfHealthFactorIsBroken(address user) internal view {}
 
 /*
- * Returns how close to liquidation a user is
- * If a user goes below 1, then they can be liquidated.
+    * Returns how close to liquidation a user is
+    * If a user goes below 1, then they can be liquidated.
 */
 function _healthFactor(address user) private view returns(uint256){}
 ```
@@ -972,13 +947,9 @@ So, how are we going to determine an account's `Health Factor`? What will we nee
 1. Total DSC minted
 2. Total Collateral _**value**_
 
-In order to do this, we're actually going to create _another_ function, stick with me here. Our next function will return some basic details of the user's account including their `DSC` minted and the collateral value.
+In order to do this, we're actually going to create _another_ function, Our next function will return some basic details of the user's account including their `DSC` minted and the collateral value.
 
-```js
-/*
- * Returns how close to liquidation a user is
- * If a user goes below 1, then they can be liquidated.
-*/
+```solidity
 function _healthFactor(address user) private view returns(uint256){
     (uint256 totalDscMinted, uint256 collateralValueInUsd) = _getAccountInformation(user);
 }
@@ -991,11 +962,7 @@ function _getAccountInformation(address user) private view returns(uint256 total
 
 A user's total minted `DSC` is easy enough to acquire by referencing our protocol's mapping of this, but a user's collateral value is going to take some math and a price feed. This logic will be held by a new function, `getAccountCollateralValue`. This function we'll make public, so anyone can call it. Private and view functions are the very last thing in our contract layout, so we'll add our new function to the bottom!
 
-```js
-//////////////////////////////////////////
-//   Public & External View Functions   //
-//////////////////////////////////////////
-
+```solidity
 function getAccountCollateralValue(address user) public pure {}
 ```
 
@@ -1003,11 +970,7 @@ So, how do we determine the total USD value of a user's collateral? Since the us
 
 Since we're only using wETH and wBTC in our protocol, we _could_ hardcode these tokens into the contract, but let's make the protocol a little more agnostic. This will allow someone to deploy their own fork, which accepts their own types of collateral. We'll accomplish this by declaring a new state variable:
 
-```js
-/////////////////////////
-//   State Variables   //
-/////////////////////////
-
+```solidity
 mapping(address token => address priceFeed) private s_priceFeeds;
 DecentralizedStableCoin private immutable i_dsc;
 mapping(address user => mapping(address token => uint256 amount)) private s_collateralDeposited;
@@ -1017,10 +980,7 @@ address[] private s_collateralTokens;
 
 We'll assign an array of compatible token addresses in our constructor:
 
-```js
-///////////////////
-//   Functions   //
-///////////////////
+```solidity
 constructor(address[] memory tokenAddresses, address[] memory priceFeedAddresses, address dscAddress){
     if(tokenAddresses.length != priceFeedAddresses.length){
         revert DSCEngine__TokenAddressesAndPriceFeedAddressesMustBeSameLength();
@@ -1036,11 +996,7 @@ constructor(address[] memory tokenAddresses, address[] memory priceFeedAddresses
 
 With this array set up, we can now loop through this in our `getAccountCollateral` function to calculate it's total value in USD.
 
-```js
-//////////////////////////////////////////
-//   Public & External View Functions   //
-//////////////////////////////////////////
-
+```solidity
 function getAccountCollateralValue(address user) public view returns (uint256 totalCollateralValueInUsd) {
     for(uint256 i = 0; i < s_collateralTokens.length; i++){
         address token = s_collateralTokens[i];
@@ -1053,21 +1009,18 @@ function getAccountCollateralValue(address user) public view returns (uint256 to
 
 Hmm... We've hit the point where we need to know the USD value of our collateral tokens in order to calculate our totals. This is probably _another_ function we're going to want.
 
-```js
+```solidity
 function getUsdValue(address token, uint256 amount) public view returns(uint256){}
 ```
 
 This is where our `Chainlink` price feeds come into play. We're going to need to import the `AggregatorV3Interface`, like we did in previous sections.
 
-```js
+```solidity
 import { ReentrancyGuard } from '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import { DecentralizedStableCoin } from './DecentralizedStableCoin.sol';
 import { AggregatorV3Interface } from '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
 ```
-
-> ❗ **NOTE**
-> The import path of `AggregatorV3Interface` has changed since the Video's filming, the above should be updated as of `06/10/2024`. If you run into issues, double check the version you're installing.
 
 If you haven't installed the `Chainlink` contract kit yet, let's do that now.
 
@@ -1075,7 +1028,7 @@ If you haven't installed the `Chainlink` contract kit yet, let's do that now.
 forge install smartcontractkit/chainlink-brownie-contracts@0.6.1 --no-commit
 ```
 
-And of course, we'll append this to our remappings within `foundry.toml`.
+And, we'll append this to our remappings within `foundry.toml`.
 
 ```toml
 remappings = [
@@ -1084,9 +1037,7 @@ remappings = [
 ]
 ```
 
-Alright, back to our `getUsdValue` function.
-
-```js
+```solidity
 function getUsdValue(address token, uint256 amount) public view returns(uint256){
     AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
     (,int256 price,,,) = priceFeed.latestRoundData();
@@ -1097,7 +1048,7 @@ This should return the latest price of our token, to 8 decimal places. We can ve
 
 Now, we're unable to simply take this returned price and multiply it by our amount, the precision of both these values is going to be different, the amount passed to this function is expected to have 18 decimal places where as our price has only 8. To resolve this we'll need to multiple our price by `1e10`. Once our precision matches, we can multiple this by our amount, then divide by `1e18` to return a reasonably formatted number for USD units.
 
-```js
+```solidity
 function getUsdValue(address token, uint256 amount) public view returns(uint256){
     AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
     (,int256 price,,,) = priceFeed.latestRoundData();
@@ -1106,19 +1057,11 @@ function getUsdValue(address token, uint256 amount) public view returns(uint256)
 }
 ```
 
-This looks good.. but I hate magic numbers. Let's declare constants for `1e10` and `1e18` and replace these in our function.
+Let's declare constants for `1e10` and `1e18` and replace these in our function.
 
-```js
-/////////////////////////
-//   State Variables   //
-/////////////////////////
+```solidity
 
 mapping(address token => address priceFeed) private s_priceFeeds;
-DecentralizedStableCoin private immutable i_dsc;
-mapping(address user => mapping(address token => uint256 amount)) private s_collateralDeposited;
-mapping(address user => uint256 amountDscMinted) private s_DSCMinted;
-address[] private s_collateralTokens;
-
 uint256 private constant ADDITIONAL_FEED_PRECISION = 1e10;
 uint256 private constant PRECISION = 1e18;
 
@@ -1132,15 +1075,9 @@ function getUsdValue(address token, uint256 amount) public view returns(uint256)
 }
 ```
 
-Much better.
-
 The last thing we need to return to, to finish up, is our `getAccountCollateralValue` function. We can now call `getUsdValue` in our loop to calculate a user's `totalCollateralValue`.
 
-```js
-//////////////////////////////////////////
-//   Public & External View Functions   //
-//////////////////////////////////////////
-
+```solidity
 function getAccountCollateralValue(address user) public view returns (uint256 totalCollateralValueInUsd) {
     for(uint256 i = 0; i < s_collateralTokens.length; i++){
         address token = s_collateralTokens[i];
@@ -1151,48 +1088,10 @@ function getAccountCollateralValue(address user) public view returns (uint256 to
 }
 ```
 
-### Wrap Up
+DSCEngine.sol contract so far:
 
-Whew, this long chain of functions all started with...
-
-```js
-function _getAccountInformation(address user) private view returns(uint256 totalDscMinted,uint256 collateralValueInUsd){
-    totalDscMinted = s_DSCMinted[user];
-    collateralValueInUsd = getAccountCollateralValue(user);
-}
-```
-
-But, we now have a way to calculate the collateral value users hold, in USD.
-
-If you need to take some time to go through this a couple times, I don't blame you. We did some jumping around here, but compartmentalizing all of this logic into its own functions will be beneficial for us long term.
-
-This is the point where I would absolutely be screaming to write some tests, we've got some entwined functions and some math going on, these things definitely need to be checked. We'll hold off for now, let's get through a few more functions first.
-
-```js
-// Layout of Contract:
-// version
-// imports
-// errors
-// interfaces, libraries, contracts
-// Type declarations
-// State variables
-// Events
-// Modifiers
-// Functions
-
-// Layout of Functions:
-// constructor
-// receive function (if exists)
-// fallback function (if exists)
-// external
-// public
-// internal
-// private
-// internal & private view & pure functions
-// external & public view & pure functions
-
+```solidity
 // SPDX-License-Identifier: MIT
-
 pragma solidity 0.8.18;
 
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -1201,24 +1100,24 @@ import { DecentralizedStableCoin } from "./DecentralizedStableCoin.sol";
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 /*
- * @title DSCEngine
- * @author Patrick Collins
- *
- * The system is designed to be as minimal as possible, and have the tokens maintain a 1 token == $1 peg at all times.
- * This is a stablecoin with the properties:
- * - Exogenously Collateralized
- * - Dollar Pegged
- * - Algorithmically Stable
- *
- * It is similar to DAI if DAI had no governance, no fees, and was backed by only WETH and WBTC.
- *
- * Our DSC system should always be "overcollateralized". At no point, should the value of
- * all collateral < the $ backed value of all the DSC.
- *
- * @notice This contract is the core of the Decentralized Stablecoin system. It handles all the logic
- * for minting and redeeming DSC, as well as depositing and withdrawing collateral.
- * @notice This contract is based on the MakerDAO DSS system
- */
+    * @title DSCEngine
+    * @author Patrick Collins
+    *
+    * The system is designed to be as minimal as possible, and have the tokens maintain a 1 token == $1 peg at all times.
+    * This is a stablecoin with the properties:
+    * - Exogenously Collateralized
+    * - Dollar Pegged
+    * - Algorithmically Stable
+    *
+    * It is similar to DAI if DAI had no governance, no fees, and was backed by only WETH and WBTC.
+    *
+    * Our DSC system should always be "overcollateralized". At no point, should the value of
+    * all collateral < the $ backed value of all the DSC.
+    *
+    * @notice This contract is the core of the Decentralized Stablecoin system. It handles all the logic
+    * for minting and redeeming DSC, as well as depositing and withdrawing collateral.
+    * @notice This contract is based on the MakerDAO DSS system
+*/
 contract DSCEngine is ReentrancyGuard {
 
     ///////////////////
@@ -1314,7 +1213,7 @@ contract DSCEngine is ReentrancyGuard {
     * You can only mint DSC if you hav enough collateral
     */
     function mintDsc(uint256 amountDscToMint) public moreThanZero(amountDscToMint) nonReentrant {
-    s_DSCMinted[msg.sender] += amountDscToMint;
+        s_DSCMinted[msg.sender] += amountDscToMint;
     }
 
     ///////////////////////////////////////////
@@ -1370,11 +1269,11 @@ contract DSCEngine is ReentrancyGuard {
 }
 ```
 
-### Finishing mintDsc
+## Finishing mintDsc
 
 Ok, where were we!? We went down several rabbit holes all in effort of determining if a user should be able to call `mintDsc`. Let's get back to that function now and finish it off.
 
-```js
+```solidity
 function mintDsc(uint256 amountDscToMint) external moreThanZero(amountDscToMint) nonReentrant {
     s_DSCMinted[msg.sender] += amountDscToMint;
     _revertIfHealthFactorIsBroken(msg.sender);
@@ -1383,7 +1282,7 @@ function mintDsc(uint256 amountDscToMint) external moreThanZero(amountDscToMint)
 
 To this point, our function is adding the amount requested to mint to the user's balance. We're then checking if this new balance is breaking the user's `Health Factor`, and if so, we're reverting. If this function _doesn't_ revert - it's time to mint!
 
-```js
+```solidity
 function mintDsc(uint256 amountDscToMint) external moreThanZero(amountDscToMint) nonReentrant {
     s_DSCMinted[msg.sender] += amountDscToMint;
     _revertIfHealthFactorIsBroken(msg.sender);
@@ -1393,7 +1292,7 @@ function mintDsc(uint256 amountDscToMint) external moreThanZero(amountDscToMint)
 
 Our `mint` function returns a bool and takes `_to` and `_amount` parameters. We can use this bool to revert if minting our DSC fails for some reason.
 
-```js
+```solidity
 function mintDsc(uint256 amountDscToMint) external moreThanZero(amountDscToMint) nonReentrant {
     s_DSCMinted[msg.sender] += amountDscToMint;
     _revertIfHealthFactorIsBroken(msg.sender);
@@ -1407,7 +1306,7 @@ function mintDsc(uint256 amountDscToMint) external moreThanZero(amountDscToMint)
 
 Lastly, add our new custom error to the appropriate section at the top of the contract:
 
-```js
+```solidity
 ///////////////////
 //     Errors    //
 ///////////////////
@@ -1428,7 +1327,7 @@ In the next lesson we'll approach our deploy script to prepare ourselves to star
 
 See you soon!
 
-```js
+```solidity
 // Layout of Contract:
 // version
 // imports
@@ -1658,7 +1557,7 @@ So far, our `_healthFactor` function is only acquiring the user's `totalDscMinte
 
 An account's `Health Factor` will be a bit more complex to consider than simply `collateralValueInUsd / totalDscMinted`. Remember, we want to assure the protocol is always `over-collateralized`, and to do this, there needs to be a threshold determined that this ratio needs to adhere to, 200% for example. We can set this threshold via a constant state variable.
 
-```js
+```solidity
 /////////////////////////
 //   State Variables   //
 /////////////////////////
@@ -1677,7 +1576,7 @@ uint256 private constant LIQUIDATION_PRECISION = 100;
 
 The threshold above, set at `50`, will assure a user's position is `200%` `over-collateralized`. We've also declared a `LIQUIDATION_PRECISION` constant for use in our calculation. We can apply this to our function's calculation now.
 
-```js
+```solidity
 /*
 * Returns how close to liquidation a user is
 * If a user goes below 1, then they can be liquidated.
@@ -1709,7 +1608,7 @@ In the above example, a user who has deposited $150 worth of ETH would not be ab
 
 With a `LIQUIDATION_THRESHOLD` of 50, a user requires 200% over-collateralization of their position, or the risk liquidation. Now that we've adjusted our collateral amount to account for a position's `LIQUIDATION_THRESHOLD`, we can use this adjust value to calculate a user's true `Health Factor`.
 
-```js
+```solidity
 /*
 * Returns how close to liquidation a user is
 * If a user goes below 1, then they can be liquidated.
@@ -1733,7 +1632,7 @@ return (0.75)
 
 Alright! Now, we've been talking about `Health Factors` which are `< 1` as being at risk of liquidation. We should set this constant officially with a state variable before moving on. We'll need it in our `_revertIfHealthFactorIsBroken` function.
 
-```js
+```solidity
 /////////////////////////
 //   State Variables   //
 /////////////////////////
@@ -1753,7 +1652,7 @@ uint256 private constant MIN_HEALTH_FACTOR = 1e18;
 
 We're ready to put our `_healthFactor` function and our `MIN_HEALTH_FACTOR` constant to work. We can use these to declare a conditional statement within `_revertIfHealthFactorIsBroken`, which will revert with a custom error if the conditional fails to pass.
 
-```js
+```solidity
 function _revertIfHealthFactorIsBroken(address user) internal view {
     uint256 userHealthFactor = _healthFactor(user);
     if(userHealthFactor < MIN_HEALTH_FACTOR){
@@ -1764,7 +1663,7 @@ function _revertIfHealthFactorIsBroken(address user) internal view {
 
 Don't forget to add the custom error to the top of our contract with the others.
 
-```js
+```solidity
 ///////////////////
 //     Errors    //
 ///////////////////
@@ -1782,7 +1681,7 @@ Another function down! We're killing it. We should assure things are compiling p
 
 In the next lesson, we finish the `mintDsc` function! See you there!
 
-```js
+```solidity
 // Layout of Contract:
 // version
 // imports
@@ -2005,7 +1904,7 @@ _I have no idea if what I'm doing makes any sort of sense. I want to make sure I
 
 Testing is crucial to ensure that our code is functioning as intended. Start by creating a new folder, `test/unit`. The tests we write are going to be integration tests, so lets prepare a deploy script. Create the file `script/DeployDSC.s.sol` as well. We should be well versed in setting up a deploy script at this point!
 
-```js
+```solidity
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
@@ -2025,7 +1924,7 @@ Beautiful, clean setup. In our run function we'll need to deploy both Decentrali
 
 Create a new file `script/HelperConfig.s.sol`. The boilerplate here is pretty standard.
 
-```js
+```solidity
 // SPDX-License-Identifier: MIT
 
 import { Script } from "forge-std/Script.sol";
@@ -2037,7 +1936,7 @@ contract HelperConfig is Script {}
 
 Just like we did in previous lessons, we'll declare a NetworkConfig struct which contains a number of properties which will be determined by the network the transaction is placed on.
 
-```js
+```solidity
 contract HelperConfig is Script {
 
     struct NetworkConfig{
@@ -2056,7 +1955,7 @@ contract HelperConfig is Script {
 
 We can now start by writing the configuration for Sepolia, feel free to copy and paste the contract addresses I've compiled.
 
-```js
+```solidity
 function getSepoliaEthConfig() public view returns (NetworkConfig memory sepoliaNetworkConfig) {
     sepoliaNetworkConfig = NetworkConfig({
         wethUsdPriceFeed: 0x694AA1769357215DE4FAC081bf1f309aDC325306, // ETH / USD
@@ -2072,7 +1971,7 @@ This is simple enough since most of the tokens we'll be working with have their 
 
 What we can do, is start this function by checking if the activeNetworkConfig has one of our token price feeds, and if not, we'll assume we're on anvil and deploy our mocks.
 
-```js
+```solidity
 function getOrCreateAnvilEthConfig() public returns (NetworkConfig memory anvilNetworkConfig) {
     // Check to see if we set an active network config
     if (activeNetworkConfig.wethUsdPriceFeed != address(0)) {
@@ -2091,7 +1990,7 @@ function getOrCreateAnvilEthConfig() public returns (NetworkConfig memory anvilN
 
 Be sure to declare your constants at the top of your script.
 
-```js
+```solidity
 uint8 public constant DECIMALS = 8;
 int256 public constant ETH_USD_PRICE = 2000e8;
 int256 public constant BTC_USD_PRICE = 1000e8;
@@ -2099,7 +1998,7 @@ int256 public constant BTC_USD_PRICE = 1000e8;
 
 Additionally, notice that we're employing the `MockV3Aggregator` as well as some `ERC20Mock`s in this function. Be sure to create the file `test/mocks/MockV3Aggregator.sol` and import it and the ERC20Mock library from OpenZeppelin into our deploy script. You can copy the version of this mock I've provided below, into your file.
 
-```js
+```solidity
 import { MockV3Aggregator } from '../test/mocks/MockV3Aggregator.sol';
 import { ERC20Mock } from '@openzeppelin/contracts/mocks/ERC20Mock.sol';
 ```
@@ -2107,7 +2006,7 @@ import { ERC20Mock } from '@openzeppelin/contracts/mocks/ERC20Mock.sol';
 <details>
 <summary>MockV3Aggregator.sol</summary>
 
-```js
+```solidity
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
@@ -2186,7 +2085,7 @@ contract MockV3Aggregator {
 
 Once mocks are deployed, we can configure the anvilNetworkConfig with those deployed addresses, and return this struct.
 
-```js
+```solidity
 anvilNetworkConfig = NetworkConfig({
 	wethUsdPriceFeed: address(ethUsdPriceFeed), // ETH / USD
 	weth: address(wethMock),
@@ -2198,7 +2097,7 @@ anvilNetworkConfig = NetworkConfig({
 
 Assure you add the `DEFAULT_ANVIL_PRIVATE_KEY` to our growing list of constant state variables.
 
-```js
+```solidity
 uint8 public constant DECIMALS = 8;
 int256 public constant ETH_USD_PRICE = 2000e8;
 int256 public constant BTC_USD_PRICE = 1000e8;
@@ -2207,7 +2106,7 @@ uint256 public constant DEFAULT_ANVIL_PRIVATE_KEY = 0xac0974bec39a17e36ba4a6b4d2
 
 Great! With both of these functions written we can update our constructor to determine which function to call based on the block.chainid of our deployment.
 
-```js
+```solidity
 constructor() {
     if(block.chainid == 11155111){
         activeNetworkConfig = getSepoliaEthConfig();
@@ -2223,7 +2122,7 @@ With the HelperConfig complete, we can return to DeployDSC.s.sol. Please referen
 
 Returning to `DeployDSC.s.sol`, we can now import our HelperConfig and use it to acquire the the parameters for our deployments.
 
-```js
+```solidity
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
@@ -2244,7 +2143,7 @@ contract DeployDSC is Script {
 
 With these values, we can now declare and assign our tokenAddresses and priceFeedAddresses arrays, and finally pass them to our deployments.
 
-```js
+```solidity
 ...
 
 address[] public tokenAddresses;
@@ -2267,7 +2166,7 @@ function run() external returns (DecentralizedStableCoin, DSCEngine) {
 
 Things look amazing so far, but there's one last thing we haven't really talked about. I'd mentioned in earlier lessons that we intend the DSCEngine to own and manage the DecentralizedStableCoin assets. DecentralizedStableCoin.sol is Ownable, and by deploying it this way, our msg.sender is going to be the owner by default. Fortunately, the Ownable library comes with the function `transferOwnership`. We'll just need to assure this is called in our deploy script.
 
-```js
+```solidity
 function run() external returns (DecentralizedStableCoin, DSCEngine) {
     HelperConfig config = new HelperConfig();
 
@@ -2293,7 +2192,7 @@ In the last lesson, we set up a deploy script as well as a `HelperConfig` to ass
 
 Create `test/unit/DSCEngine.t.sol` and begin with the boilerplate we're used to. We know we'll have to import our deploy script as well as `Test`, `DecentralizedStableCoin.sol`, and `DSCEngine.sol`.
 
-```js
+```solidity
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.18;
@@ -2310,7 +2209,7 @@ contract DSCEngineTest is Test {
 
 Declare our contract/script variables, then in our `setUp` function, we're going to need to deploy our contracts using our `DeployDSC` script.
 
-```js
+```solidity
 contract DSCEngineTest is Test {
     DeployDSC deployer;
     DecentralizedStableCoin dsc;
@@ -2325,7 +2224,7 @@ contract DSCEngineTest is Test {
 
 I think a good place to start will be checking some of our math in `DSCEngine`. We should verify that we're pulling data from our price feeds properly and that our USD calculations are correct.
 
-```js
+```solidity
 /////////////////
 // Price Tests //
 /////////////////
@@ -2335,7 +2234,7 @@ function testGetUsdValue() public {}
 
 The `getUsdValue` function takes a token address and an amount as a parameter. We could import our mocks for reference here, but instead, let's adjust our `DeployDSC` script to also return our `HelperConfig`. We can acquire these token addresses from this in our test.
 
-```js
+```solidity
 contract DeployDSC is Script {
     ...
 
@@ -2364,7 +2263,7 @@ Now, back to our test. We'll need to do a few things in `DSCEngineTest.t.sol`.
 -   Acquire the imported config from our `deployer.run` call
 -   Acquire `ethUsdPriceFeed` and weth from our `config`'s `activeNetworkConfig`
 
-```js
+```solidity
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.18;
@@ -2393,7 +2292,7 @@ contract DSCEngineTest is Test {
 
 We're now ready to use some of these values in our test function. For our unit test, we'll be requesting the value of `15ETH`, or `15e18`. Our HelperConfig has the ETH/USD price configured at `$2000`. Thus we should expect `30000e18` as a return value from our getUsdValue function. Let's see if that's true.
 
-```js
+```solidity
 /////////////////
 // Price Tests //
 /////////////////
@@ -2419,7 +2318,7 @@ It works! We're clearly still on track. This is great. It's good practice to tes
 
 Before moving on, we should write a test for our `depositCollateral` function as well. We'll need to import our `ERC20Mock` in order to test deposits, so let's do that now. We'll also need to declare a `USER` to call these functions with and amount for them to deposit.
 
-```js
+```solidity
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
 
 ...
@@ -2443,7 +2342,7 @@ contract DSCEngineTest is Test {
 
 Let's make sure our `USER` has some tokens minted to them in our `setUp`, they'll need them for several tests in our future.
 
-```js
+```solidity
 address public USER = makeAddr("user");
 uint256 public constant AMOUNT_COLLATERAL = 10 ether;
 uint256 public constant STARTING_ERC20_BALANCE = 10 ether;
@@ -2459,7 +2358,7 @@ function setUp public {
 
 Our user is going to need to approve the `DSCEngine` contract to call `depositCollateral`. Despite this, we're going to deposit `0`. This _should_ cause our function call to revert with our custom error `DSCEngine__NeedsMoreThanZero`, which we'll account for with `vm.expectRevert`.
 
-```js
+```solidity
  /////////////////////////////
 // depositCollateral Tests //
 /////////////////////////////
@@ -2486,7 +2385,7 @@ forge test --mt testRevertsIfCollateralZero
 
 The parameters for our depositCollateralAndMintDsc function are going to be similar to what we've seen in depositCollateral.
 
-```js
+```solidity
 function depositCollateralAndMintDsc(address tokenCollateralAddress, uint256 amountCollateral, uint256 amountDscToMint){}
 ```
 
@@ -2497,7 +2396,7 @@ All we really need to do, in this function, is call our depositCollateral and mi
 
 Because this is one of our main functions, we're absolutely going to add some NATSPEC.
 
-```js
+```solidity
 /*
  * @param tokenCollateralAddress: the address of the token to deposit as collateral
  * @param amountCollateral: The amount of collateral to deposit
@@ -2517,7 +2416,7 @@ So far we've afforded our users a way to put money _into_ the protocol, they'll 
 1. Check that withdrawing the requested amount doesn't cause the account's `Health Factor` to break (fall below 1)
 2. transfer the requested tokens from the protocol to the user
 
-```js
+```solidity
 function redeemCollateral(address tokenCollateralAddress, uint256 amountCollateral) public moreThanZero(amountCollateral) nonReentrant{}
 ```
 
@@ -2528,7 +2427,7 @@ We append the `moreThanZero` and `nonReentrant` modifiers to our function to pre
 
 With checks in place, we'll want to update the internal accounting of the contract to reflect the withdrawal. This updates contract state, so of course we'll want to emit a new event.
 
-```js
+```solidity
 function redeemCollateral(address tokenCollateralAddress, uint256 amountCollateral) public moreThanZero(amountCollateral) nonReentrant{
     s_collateralDeposited[msg.sender][tokenCollateralAddress] -= amountCollateral;
     emit CollateralRedeemed(msg.sender, tokenCollateralAddress, amountCollateral);
@@ -2540,7 +2439,7 @@ function redeemCollateral(address tokenCollateralAddress, uint256 amountCollater
 
 Don't forget to add your event to the top of your contract as well.
 
-```js
+```solidity
 ////////////////
 //   Events   //
 ////////////////
@@ -2551,7 +2450,7 @@ event CollateralRedeemed(address indexed user, address indexed token, uint256 in
 
 At this point in our function, we'll want to transfer the redeemed tokens to the user, but we're caught in a trap of sorts. Part of our requirements for this function is that the user's `Health Factor` mustn't be broken after the transfer as occurred. In situations like these, you may see the `CEI (Checks, Effects, Interactions)` pattern broken sometimes. A protocol _could_ call a function prior to the transfer to calculate changes and determine if the `Health Factor` is broken, before a transfer occurs, but this is often quite gas intensive. For this reason protocols will often sacrifice `CEI` for efficiency.
 
-```js
+```solidity
 function redeemCollateral(address tokenCollateralAddress, uint256 amountCollateral) public moreThanZero(amountCollateral) nonReentrant{
     s_collateralDeposited[msg.sender][tokenCollateralAddress] -= amountCollateral;
     emit CollateralRedeemed(msg.sender, tokenCollateralAddress, amountCollateral);
@@ -2571,7 +2470,7 @@ This looks great. What does a user do when they want to exit the protocol entire
 
 In order for a user to burn their `DSC`, the tokens will need to be transferred to `address(0)`, and their balance within our `s_DSCMinted` mapping will need to be updated. Rather than transferring to `address(0)` ourselves, our function will take the tokens from the user and then call the inherent burn function on the token. We'll apply the `moreThanZero` modifier for our usual reasons (non-zero transactions only!).
 
-```js
+```solidity
 function burnDsc(uint256 amount) external moreThanZero(amount){
     s_DSCMinted[msg.sender] -= amount;
     bool success = i_dsc.transferFrom(msg.sender, address(this), amount);
@@ -2585,7 +2484,7 @@ The conditional above, should technically never hit, since transferFrom will rev
 
 We'll need to call burn on our `DSC` now.
 
-```js
+```solidity
 function burnDsc(uint256 amount) public moreThanZero(amount){
     s_DSCMinted[msg.sender] -= amount;
     bool success = i_dsc.transferFrom(msg.sender, address(this), amount);
@@ -2604,7 +2503,7 @@ function burnDsc(uint256 amount) public moreThanZero(amount){
 
 With both `redeemCollateral` and `burnDsc` written, we can now combine the functionality into one transaction.
 
-```js
+```solidity
 /*
  * @param tokenCollateralAddress: the collateral address to redeem
  * @param amountCollateral: amount of collateral to redeem
@@ -2621,7 +2520,7 @@ function redeemCollateralForDsc(address tokenCollateralAddress, uint256 amountCo
 
 Our `DSCEngine` is almost done! We've got a couple more functions to flesh out still.
 
-```js
+```solidity
 function liquidate() external {}
 
 function getHealthFactor() external view {}
@@ -2643,7 +2542,7 @@ To illustrate:
 
 Let's write this out.
 
-```js
+```solidity
 /*
 * @param collateral: The ERC20 token address of the collateral you're using to make the protocol solvent again.
 * This is collateral that you're going to take from the user who is insolvent.
@@ -2666,7 +2565,7 @@ As such an important function to the protocol we've made every effort to be as c
 
 Alright, let's keep going. The first thing we'll want to do in `liquidate` is verify that the passed user is eligible for liquidation. Someone being liquidated should have a `Health Factor` below `1`, otherwise this function should revert.
 
-```js
+```solidity
 function liquidate(address collateral, address user, uint256 debtToCover) external moreThanZero(debtToCover) nonReentrant {
     uint256 startingUserHealthFactor = _healthFactor(user);
     if(startingUserHealthFactor > MIN_HEALTH_FACTOR){
@@ -2677,7 +2576,7 @@ function liquidate(address collateral, address user, uint256 debtToCover) extern
 
 Of course, we'll add our error to the errors section at the top of our contract.
 
-```js
+```solidity
 ///////////////////
 //     Errors    //
 ///////////////////
@@ -2700,7 +2599,7 @@ Our next step in the `liquidate` function is to remove the unhealthy position fr
 
 We'll need a new function to calculate this token amount, but we'll get to that next.
 
-```js
+```solidity
 function liquidate(address collateral, address user, uint256 debtToCover) external moreThanZero(debtToCover) nonReentrant {
     uint256 startingUserHealthFactor = _healthFactor(user);
     if(startingUserHealthFactor > MIN_HEALTH_FACTOR){
@@ -2713,7 +2612,7 @@ function liquidate(address collateral, address user, uint256 debtToCover) extern
 
 We're passing the `getTokenAmountFromUsd` function the type of collateral, and the amount of debt we're covering. From this we'll be able to use price feeds to determine how much of the given collateral should be redeemed. This will be another public/external view function.
 
-```js
+```solidity
 //////////////////////////////////////////
 //   Public & External View Functions   //
 //////////////////////////////////////////
@@ -2730,7 +2629,7 @@ Remember, we multiply by `PRECISION(1e18)` and `ADDITIONAL_FEED_PRECISION (1e10)
 
 Next, let's ensure the `liquidator` is being incentivized for securing the protocol, we'll configure a `10%` bonus to the collateral awarded to the `liquidator`.
 
-```js
+```solidity
 function liquidate(address collateral, address user, uint256 debtToCover) external moreThanZero(debtToCover) nonReentrant {
     uint256 startingUserHealthFactor = _healthFactor(user);
     if(startingUserHealthFactor > MIN_HEALTH_FACTOR){
@@ -2745,7 +2644,7 @@ function liquidate(address collateral, address user, uint256 debtToCover) extern
 
 Be sure to declare our new constant state variable, `LIQUIDATION_BONUS`. By setting this to `10` and dividing by our `LIQUIDATION_PRECISION` of `100`, we're setting a `10%` collateral bonus.
 
-```js
+```solidity
 /////////////////////////
 //   State Variables   //
 /////////////////////////
@@ -2755,7 +2654,7 @@ uint256 private constant LIQUIDATION_BONUS = 10;
 
 We then of course add this bonus to our current `tokenAmountFromDebtCovered`, to acquire the total collateral being redeemed.
 
-```js
+```solidity
 function liquidate(address collateral, address user, uint256 debtToCover) external moreThanZero(debtToCover) nonReentrant {
     uint256 startingUserHealthFactor = _healthFactor(user);
     if(startingUserHealthFactor > MIN_HEALTH_FACTOR){
