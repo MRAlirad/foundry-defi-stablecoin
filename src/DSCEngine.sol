@@ -150,17 +150,17 @@ contract DSCEngine is ReentrancyGuard {
     }
 
     /*
-    * @param collateral: The ERC20 token address of the collateral you're using to make the protocol solvent again.
-    * This is collateral that you're going to take from the user who is insolvent.
-    * In return, you have to burn your DSC to pay off their debt, but you don't pay off your own.
-    * @param user: The user who is insolvent. They have to have a _healthFactor below MIN_HEALTH_FACTOR
-    * @param debtToCover: The amount of DSC you want to burn to cover the user's debt.
+        * @param collateral: The ERC20 token address of the collateral you're using to make the protocol solvent again.
+        * This is collateral that you're going to take from the user who is insolvent.
+        * In return, you have to burn your DSC to pay off their debt, but you don't pay off your own.
+        * @param user: The user who is insolvent. They have to have a _healthFactor below MIN_HEALTH_FACTOR
+        * @param debtToCover: The amount of DSC you want to burn to cover the user's debt.
 
-    * @notice: You can partially liquidate a user.
-    * @notice: You will get a 10% LIQUIDATION_BONUS for taking the users funds.
-    * @notice: This function working assumes that the protocol will be roughly 150% overcollateralized in order for this to work.
-    * @notice: A known bug would be if the protocol was only 100% collateralized, we wouldn't be able to liquidate anyone.
-    * For example, if the price of the collateral plummeted before anyone could be liquidated.
+        * @notice: You can partially liquidate a user.
+        * @notice: You will get a 10% LIQUIDATION_BONUS for taking the users funds.
+        * @notice: This function working assumes that the protocol will be roughly 150% overcollateralized in order for this to work.
+        * @notice: A known bug would be if the protocol was only 100% collateralized, we wouldn't be able to liquidate anyone.
+        * For example, if the price of the collateral plummeted before anyone could be liquidated.
     */
     function liquidate(address collateral, address user, uint256 debtToCover) external moreThanZero(debtToCover) nonReentrant {
         // need to check health factor of the user
@@ -172,7 +172,7 @@ contract DSCEngine is ReentrancyGuard {
 
         // we are giving the liquidator $110 of WETH for 1000 DSC
         // we should implement a feature to liquidate in the event the protocol is insolvent And sweep extra amount into a treasury.
-    
+
         uint256 bonusCollateral = (tokenAmountFromDebtCovered * LIQUIDATION_BONUS) / LIQUIDATION_PRECISION;
         uint256 collateralToRedeem = tokenAmountFromDebtCovered + bonusCollateral;
         _redeemCollateral(user, msg.sender, collateral, collateralToRedeem);
@@ -186,7 +186,7 @@ contract DSCEngine is ReentrancyGuard {
     
 
     function getHealthFactor() external view {}
-    
+
     //!  Private & Internal View Functions  !//
     function _burnDsc(uint256 amountDscToBurn, address onBehalfOf, address dscFrom) private {
         s_DSCMinted[onBehalfOf] -= amountDscToBurn;

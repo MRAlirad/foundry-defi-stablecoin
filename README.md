@@ -282,21 +282,7 @@ _**Why are stablecoins minted?**_
 
 ## DecentralizedStableCoin.sol
 
-Let's start by making our project directory.
-
-```bash
-mkdir foundry-defi-stablecoin
-cd foundry-defi-stablecoin
-code .
-```
-
-With the directory open in VSCode, we can initialize a new Foundry project.
-
-```bash
-forge init
-```
-
-Finally, remove the placeholder example contracts `src/Counter.sol`, `script/Counter.s.sol`, and `test/Counter.t.sol`.
+Initialize a new Foundry project in our directory useing `forge init`. and remove the placeholder example contracts.
 
 Our stablecoin is going to be:
 
@@ -315,38 +301,9 @@ The token should be kept stable through this collateralization stability mechani
 
 For collateral, the protocol will accept wrapped Bitcoin and wrapped Ether, the ERC20 equivalents of these tokens.
 
-Alright, with things scoped out a bit, let's dive into writing some code. Start by creating the file `src/DecentralizedStableCoin.sol`. I'm hoping to make this as professional as possible, so I'm actually going to paste my contract and function layouts as a reference to the top of this file.
+See the audit results of the codebase  **[here](https://www.codehawks.com/contests/cljx3b9390009liqwuedkn0m0)**. 
 
-```solidity
-// SPDX-License-Identifier: MIT
-
-// This is considered an Exogenous, Decentralized, Anchored (pegged), Crypto Collateralized low volatility coin
-
-// Layout of Contract:
-// version
-// imports
-// interfaces, libraries, contracts
-// errors
-// Type declarations
-// State variables
-// Events
-// Modifiers
-// Functions
-
-// Layout of Functions:
-// constructor
-// receive function (if exists)
-// fallback function (if exists)
-// external
-// public
-// internal
-// private
-// view & pure functions
-```
-
-When I wrote this codebase, I intended to get it audited, and I did! You can actually see the audit results **[here](https://www.codehawks.com/contests/cljx3b9390009liqwuedkn0m0)**. For this reason, something different you may notice about this codebase is how _verbose_ we're going to be. When it comes to security and having auditors review our code, the clearer we are in explaining the code and added context to our goals, the easier their lives are going to be keeping us secure.
-
-With that said, our contract boilerplate is going to be set up similarly to everything we've been doing so far. Let's add some NATSPEC to outline the contracts purpose.
+Start by creating the file `src/DecentralizedStableCoin.sol`.
 
 ```solidity
 pragma solidity ^0.8.18;
@@ -384,20 +341,10 @@ Rather than importing a standard ERC20 contract, we'll be leveraging the ERC20Bu
 
 ```solidity
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.18;
 
 import {ERC20Burnable, ERC20} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 
-/*
- * @title: DecentralizedStableCoin
- * @author: MRAlirad
- * Collateral: Exogenous (ETH & BTC)
- * Minting: Algorithmic
- * Relative Stability: Pegged to USD
- *
- * This is the contract meant to be governed by DSCEngine. This contract is just the ERC20 implementation of our stablecoin system.
- */
 contract DecentralizedStableCoin is ERC20Burnable {
     constructor() ERC20("DecentralizedStableCoin", "DSC"){}
 }
@@ -405,7 +352,7 @@ contract DecentralizedStableCoin is ERC20Burnable {
 
 Because we're inheriting ERC20Burnable, and it inherits ERC20, we need to satisfy the standard ERC20 constructor parameters within our contracts constructor. We've set the name `DecentralizedStableCoin` and the symbol `DSC`.
 
-All of the properties of our protocol are going to be governed ultimately by the DSCEngine.sol contract. Functionality like the stability mechanism, including minting and burning, need to be controlled by the DSCEngine to maintain the integrity of the stablecoin.
+All of the properties of our protocol are going to be governed ultimately by the `DSCEngine.sol` contract. Functionality like the stability mechanism, including minting and burning, need to be controlled by the DSCEngine to maintain the integrity of the stablecoin.
 
 In order to accomplish this, we're going to also inherit `Ownable` with DecentralizedStableCoin.sol. This will allow us to configure access control, assuring only our DSCEngine contract is authorized to call these functions.
 
@@ -426,11 +373,9 @@ contract DecentralizedStableCoin is ERC20Burnable, Ownable {
 }
 ```
 
-The two major functions we're going to want the DSCEngine to control are of course the mint and burn functions. We can override the standard ERC20 functions with our own to assure this access control is in place.
+The two major functions we're going to want the DSCEngine to control are of course the `mint` and `burn` functions. We can override the standard ERC20 functions with our own to assure this access control is in place.
 
 ### Burn
-
-We can start by writing our burn function.
 
 ```solidity
 function burn(uint256 _amount) external override onlyOwner{}
@@ -445,19 +390,16 @@ We'll configure two custom errors for when these checks fail.
 
 ```solidity
 contract DecentralizedStableCoin is ERC20Burnable, Ownable {
-    error DecentralizedStableCoin__MustBeMoreThanZero();
+    error DecentralizedStableCoin__AmountMustBeMoreThanZero();
     error DecentralizedStableCoin__BurnAmountExceedsBalance();
 
     constructor() ERC20("DecentralizedStableCoin", "DSC"){}
 
     function burn(uint256 _amount) external override onlyOwner{
         uint256 balance = balanceOf(msg.sender);
-        if(_amount <= 0){
-            revert DecentralizedStableCoin__MustBeMoreThanZero();
-        }
-        if(balance < _amount){
-            revert DecentralizedStableCoin__BurnAmountExceedsBalance();
-        }
+
+        if(_amount <= 0) revert DecentralizedStableCoin__AmountMustBeMoreThanZero();
+        if(balance < _amount) revert DecentralizedStableCoin__BurnAmountExceedsBalance();
     }
 }
 ```
@@ -467,52 +409,45 @@ The last thing we're going to do, assuming these checks pass, is burn the passed
 ```solidity
 function burn(uint256 _amount) external override onlyOwner{
     uint256 balance = balanceOf(msg.sender);
-    if(_amount <= 0){
-        revert DecentralizedStableCoin__MustBeMoreThanZero();
-    }
-    if(balance < _amount){
-        revert DecentralizedStableCoin__BurnAmountExceedsBalance();
-    }
+
+    if(_amount <= 0) revert DecentralizedStableCoin__AmountMustBeMoreThanZero();
+    if(balance < _amount) revert DecentralizedStableCoin__BurnAmountExceedsBalance();
+
     super.burn(_amount);
 }
 ```
 
 ### Mint
 
-The second function we'll need to override to configure access control on is going to be our mint function.
-
 ```solidity
 function mint(address _to, uint256 _amount) external overrides onlyOwner returns(bool){
 }
 ```
 
-So, in this function we want to configure a boolean return value which is going to represent if the mint/transfer was successful. Something we'll want to check is if the \_to argument being passed is address(0), in addition to assuring the amount minted is greater than zero.
+So, in this function we want to configure a boolean return value which is going to represent if the mint/transfer was successful. Something we'll want to check is if the `_to` argument being passed is address(0), in addition to assuring the amount minted is greater than zero.
 
 We'll of course want to revert with custom errors if these conditional checks fail.
 
 ```solidity
 contract DecentralizedStableCoin is ERC20Burnable, Ownable {
-    error DecentralizedStableCoin__MustBeMoreThanZero();
+    error DecentralizedStableCoin__AmountMustBeMoreThanZero();
     error DecentralizedStableCoin__BurnAmountExceedsBalance();
     error DecentralizedStableCoin__NotZeroAddress();
 
     ...
 
     function mint(address _to, uint256 _amount) external onlyOwner returns(bool){
-        if(_to == address(0)){
-            revert DecentralizedStableCoin__NotZeroAddress();
-        }
-        if(_amount <= 0){
-            revert DecentralizedStableCoin__MustBeMoreThanZero();
-        }
-        _mint(_to, amount)
+        if(_to == address(0)) revert DecentralizedStableCoin__NotZeroAddress();
+        if(_amount <= 0) revert DecentralizedStableCoin__AmountMustBeMoreThanZero();
+
+        _mint(_to, _amount);
         return true;
     }
 }
 ```
 
 > ❗ **NOTE** <br />
-> We don't need to override the mint function, we're just calling the \_mint function within DecentralizedStableCoin.sol.
+> We don't need to override the mint function, we're just calling the `mint` function within DecentralizedStableCoin.sol.
 
 ## DSCEngine.sol Setup
 
@@ -524,71 +459,42 @@ Begin with creating a new file, `src/DSCEngine.sol`. I'll bring over my contract
 
 ```solidity
 // SPDX-License-Identifier: MIT
-
-// This is considered an Exogenous, Decentralized, Anchored (pegged), Crypto Collateralized low volatility coin
-
-// Layout of Contract:
-// version
-// imports
-// interfaces, libraries, contracts
-// errors
-// Type declarations
-// State variables
-// Events
-// Modifiers
-// Functions
-
-// Layout of Functions:
-// constructor
-// receive function (if exists)
-// fallback function (if exists)
-// external
-// public
-// internal
-// private
-// view & pure functions
-
 pragma solidity ^0.8.18;
 
 contract DSCEngine {}
 ```
 
-Time for NATSPEC, remember, we want to be as verbose and clear in presenting what our code is meant to do.
+Time for NATSPEC:
 
 ```solidity
 /*
- * @title DSCEngine
- * @author MRAlirad
- *
- * The system is designed to be as minimal as possible, and have the tokens maintain a 1 token == $1 peg at all times.
- * This is a stablecoin with the properties:
- * - Exogenously Collateralized
- * - Dollar Pegged
- * - Algorithmically Stable
- *
- * It is similar to DAI if DAI had no governance, no fees, and was backed by only WETH and WBTC.
- *
- * Our DSC system should always be "overcollateralized". At no point, should the value of
- * all collateral < the $ backed value of all the DSC.
- *
- * @notice This contract is the core of the Decentralized Stablecoin system. It handles all the logic
- * for minting and redeeming DSC, as well as depositing and withdrawing collateral.
- * @notice This contract is based on the MakerDAO DSS system
- */
+    * @title DSCEngine
+    * @author MRAlirad
+    *
+    * The system is designed to be as minimal as possible, and have the tokens maintain a 1 token == $1 peg at all times.
+    * This is a stablecoin with the properties:
+    * - Exogenously Collateralized
+    * - Dollar Pegged
+    * - Algorithmically Stable
+    *
+    * It is similar to DAI if DAI had no governance, no fees, and was backed by only WETH and WBTC.
+    *
+    * Our DSC system should always be "overcollateralized". At no point, should the value of all collateral < the $ backed value of all the DSC.
+    *
+    * @notice This contract is the core of the Decentralized Stablecoin system. It handles all the logic for minting and redeeming DSC, as well as depositing and withdrawing collateral.
+    * @notice This contract is based on the MakerDAO DSS system
+*/
 contract DSCEngine {}
 ```
 
-> ❗ **IMPORTANT** <br />
-> Verbosity.
-
-I know this may seem like a lot, but a common adage is: `Your code will be written once, and read thousands of times.` Clarity and cleanliness in code is important to provide context and understanding to those reading the codebase later.
+`Your code will be written once, and read thousands of times.` Clarity and cleanliness in code is important to provide context and understanding to those reading the codebase later.
 
 ### Functions
 
 At this point in writing a contract, some will actually start by creating an interface. This can serve as a clear, itemized list of methods and functionality which you expect to be included within your contract. We'll just add our function "shells" into our contract directly for now.
 
 Let's consider what functions will be required for DSC.
-
+  
 We will need:
 
 -   Deposit collateral and mint the `DSC` token
@@ -639,12 +545,7 @@ contract DSCEngine {
 
 ## Create the deposit collateral function
 
-I think the easiest place to start with filling out the contract is going to be depositCollateral. This makes sense to me since it'll surely be one of the first places a user interacts with our protocol.
-
 To deposit collateral, users are going to need the address for the type of collateral they're depositing (wETH or wBTC), and the amount they want to deposit. Easy enough.
-
-> ❗ **NOTE** <br />
-> Don't forget the NATSPEC!
 
 ```solidity
 ///////////////////
@@ -659,86 +560,46 @@ To deposit collateral, users are going to need the address for the type of colla
  * @param tokenCollateralAddress: The ERC20 token address of the collateral you're depositing
  * @param amountCollateral: The amount of collateral you're depositing
  */
-function depositCollateral(address tokenCollateralAddress, uint256 amountCollateral) external {
-
-}
+function depositCollateral(address tokenCollateralAddress, uint256 amountCollateral) external {}
 ```
 
-Now, the first thing I consider when I see a function passing values like this is sanitization. There are always going to be considerations for the parameters being passed to public functions that we should account for. For example, it's often inappropriate for address(0) to be passed, or negative numbers etc.
-
-It's likely that many functions in a protocol will require this kind of sanitation and rather than rewriting conditionals a dozen times, we should leverage modifiers.
-
-Our function layout reference says modifiers should come before our functions, so let's adhere to that. We'll need a new error is well.
+We need a modifire assure that the amount of collateral passed to our depositCollateral function is greater than zero.
 
 ```solidity
-
 contract DSCEngine {
-
-    ///////////////////
-    //     Errors    //
-    ///////////////////
-
     error DSCEngine__NeedsMoreThanZero();
-
-    ///////////////////
-    //   Modifiers   //
-    ///////////////////
 
     modifier moreThanZero(uint256 amount){
         if(amount <=0){
             revert DSCEngine__NeedsMoreThanZero();
         }
+        _;
     }
-
-...
-
 }
 ```
 
-This looks great! This should assure that the amount of collateral passed to our depositCollateral function is greater than zero. The other parameter of this function is the tokenCollateralAddress. Since we're only meaning to support wETH and wBTC, we should make a second modifier to assure only these allowed tokens are deposited as collateral.
+We need to create a mapping as a state variable to track the tokens which are compatible with our protocol.
+
+We know we're going to be using chainlink pricefeeds, so what we can do is have this mapping be a token address, to it's associated pricefeed.
 
 ```solidity
-modifier isAllowedToken(address token){
-
-}
-```
-
-Currently, we don't have any reference to use in our conditional for this modifier. We'll need to create a mapping as a state variable to track the tokens which are compatible with our protocol.
-
-We know we're going to be using chainlink pricefeeds, so what we can do is have this mapping be a token address, to it's associated pricefeed. In our modifier, if a pricefeed isn't found for the passed token address, it'll revert!
-
-```solidity
-/////////////////////////
-//   State Variables   //
-/////////////////////////
-
 mapping(address token => address priceFeed) private s_priceFeeds;
 ```
 
 We'll probably want to initialize this mapping in our contract's constructor. To do this, we'll have our constructor take a list of token addresses and a list of priceFeed addresses, each index of one list will be mapped to the respective index of the other on deployment. We also know that the DSCEngine is going to need to know about the DecentralizeStablecoin contract. With all this in mind, let's set up our constructor.
 
 ```solidity
-///////////////////
-//   Functions   //
-///////////////////
 constructor(address[] memory tokenAddresses, address[] memory priceFeedAddresses, address dscAddress){}
 ```
 
 Here's where we should definitely perform a sanity check, since a contract is only constructed once. If the indexes of our lists are meant to be mapped to each other, we should assure the lengths of the lists match, and if they don't we can revert with another custom error.
 
 ```solidity
-///////////////////
-//     Errors    //
-///////////////////
-
 error DSCEngine__NeedsMoreThanZero();
 error DSCEngine__TokenAddressesAndPriceFeedAddressesMustBeSameLength();
 
 ...
 
-///////////////////
-//   Functions   //
-///////////////////
 constructor(address[] memory tokenAddresses, address[] memory priceFeedAddresses, address dscAddress){
     if(tokenAddresses.length != priceFeedAddresses.length){
         revert DSCEngine__TokenAddressesAndPriceFeedAddressesMustBeSameLength();
@@ -749,9 +610,6 @@ constructor(address[] memory tokenAddresses, address[] memory priceFeedAddresses
 Now we can add our for loop which will map our two lists of addresses to each other.
 
 ```solidity
-///////////////////
-//   Functions   //
-///////////////////
 constructor(address[] memory tokenAddresses, address[] memory priceFeedAddresses, address dscAddress){
     if(tokenAddresses.length != priceFeedAddresses.length){
         revert DSCEngine__TokenAddressesAndPriceFeedAddressesMustBeSameLength();
@@ -765,26 +623,16 @@ constructor(address[] memory tokenAddresses, address[] memory priceFeedAddresses
 
 We're going to be doing lots with our `dscEngine`. We should declare this as an immutable variable and then assign it in our constructor.
 
-> ❗ **NOTE**
-> Don't forget to import `DecentralizedStableCoin.sol`!
-
 ```solidity
 import {DecentralizedStableCoin} from "DecentralizedStableCoin.sol";
 
 ...
-
-/////////////////////////
-//   State Variables   //
-/////////////////////////
 
 mapping(address token => address priceFeed) private s_priceFeeds;
 DecentralizedStableCoin private immutable i_dsc;
 
 ...
 
-///////////////////
-//   Functions   //
-///////////////////
 constructor(address[] memory tokenAddresses, address[] memory priceFeedAddresses, address dscAddress){
     if(tokenAddresses.length != priceFeedAddresses.length){
         revert DSCEngine__TokenAddressesAndPriceFeedAddressesMustBeSameLength();
@@ -797,29 +645,16 @@ constructor(address[] memory tokenAddresses, address[] memory priceFeedAddresses
 }
 ```
 
-Remember, we were doing all this because we need a new modifier that checks our token addresses! Now that things are established in our constructor, we can write this modifier.
+We were doing all this because we need a new modifier that checks our token addresses! Since we're only meaning to support wETH and wBTC, we should make a modifier to assure only these allowed tokens are deposited as collateral.
+In our modifier, if a pricefeed isn't found for the passed token address, it'll revert!
 
 ```solidity
 
 contract DSCEngine {
-
-    ///////////////////
-    //     Errors    //
-    ///////////////////
-
-    error DSCEngine__NeedsMoreThanZero();
+    ...
     error DSCEngine__TokenNotAllowed(address token);
 
-    ///////////////////
-    //   Modifiers   //
-    ///////////////////
-
-    modifier moreThanZero(uint256 amount){
-        if(amount <=0){
-            revert DSCEngine__NeedsMoreThanZero();
-        }
-        _;
-    }
+    ...
 
     modifier isAllowedToken(address token) {
         if (s_priceFeeds[token] == address(0)) {
@@ -827,23 +662,12 @@ contract DSCEngine {
         }
         _;
     }
-
-...
-
 }
 ```
 
-Great! Now, coming all the way back to our functions (told you we'd be moving fast!), we can add these newly created modifiers to `depositCollateral`.
+We can add these newly created modifiers to `depositCollateral`.
 
 ```solidity
-///////////////////////////
-//   External Functions  //
-///////////////////////////
-
-/*
- * @param tokenCollateralAddress: The ERC20 token address of the collateral you're depositing
- * @param amountCollateral: The amount of collateral you're depositing
- */
 function depositCollateral(address tokenCollateralAddress, uint256 amountCollateral) external moreThanZero(amountCollateral) isAllowedToken(tokenCollateralAddress) nonReentrant{}
 ```
 
@@ -852,9 +676,7 @@ I've additionally included the nonReentrant modifier, which we'll need to import
 Let's add the import to our contract.
 
 > ❗ **NOTE**
-> In version 5 of OpenZeppelin's contracts library, `ReentrancyGuard.sol` is
-> in a different location. Edit the filepath from `/security/` to `/utils/` will
-> work.
+> In version 5 of OpenZeppelin's contracts library, `ReentrancyGuard.sol` is in a different location. Edit the filepath from `/security/` to `/utils/` will work.
 
 ```solidity
 pragma solidity ^0.8.18;
@@ -869,13 +691,9 @@ contract DSCEngine is ReentrancyGuard {
 }
 ```
 
-Whew, all this and we haven't even started the function body yet! Let's start working with the deposited collateral. We'll need a way to keep track of the collateral deposited by each user. This sounds like a mapping to me.
+We'll need a way to keep track of the collateral deposited by each user. This sounds like a mapping to me.
 
 ```solidity
-/////////////////////////
-//   State Variables   //
-/////////////////////////
-
 mapping(address token => address priceFeed) private s_priceFeeds;
 DecentralizedStableCoin private immutable i_dsc;
 mapping(address user => mapping(address token => uint256 amount)) private s_collateralDeposited;
@@ -884,38 +702,18 @@ mapping(address user => mapping(address token => uint256 amount)) private s_coll
 Now we can finally add the deposited collateral to our user's balance within our depositCollateral function.
 
 ```solidity
-///////////////////////////
-//   External Functions  //
-///////////////////////////
-
-/*
- * @param tokenCollateralAddress: The ERC20 token address of the collateral you're depositing
- * @param amountCollateral: The amount of collateral you're depositing
- */
 function depositCollateral(address tokenCollateralAddress, uint256 amountCollateral) external moreThanZero(amountCollateral) isAllowedToken(tokenCollateralAddress) nonReentrant{
     s_collateralDeposited[msg.sender][tokenCollateralAddress] += amountCollateral;
 }
 ```
 
-When we're changing the balance of our user's deposited collateral, what are we doing? We're updating our contract state! Any time state is changed, we should absolutely emit an event. Our contract layout tells us that events should be declared beneath our state variables. So, let's go ahead and declare this event and emit it in our depositCollateral function.
+We're updating our contract state! Any time state is changed, we should absolutely emit an event.
 
 ```solidity
-////////////////
-//   Events   //
-////////////////
-
 event CollateralDeposited(address indexed user, address indexed token, uint256 indexed amount);
 
 ...
 
-///////////////////////////
-//   External Functions  //
-///////////////////////////
-
-/*
- * @param tokenCollateralAddress: The ERC20 token address of the collateral you're depositing
- * @param amountCollateral: The amount of collateral you're depositing
- */
 function depositCollateral(address tokenCollateralAddress, uint256 amountCollateral) external moreThanZero(amountCollateral) isAllowedToken(tokenCollateralAddress) nonReentrant{
     s_collateralDeposited[msg.sender][tokenCollateralAddress] += amountCollateral;
     emit CollateralDeposited(msg.sender, tokenCollateralAddress, amountCollateral);
@@ -935,14 +733,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 ...
 
-///////////////////////////
-//   External Functions  //
-///////////////////////////
-
-/*
- * @param tokenCollateralAddress: The ERC20 token address of the collateral you're depositing
- * @param amountCollateral: The amount of collateral you're depositing
- */
 function depositCollateral(address tokenCollateralAddress, uint256 amountCollateral) external moreThanZero(amountCollateral) isAllowedToken(tokenCollateralAddress) nonReentrant{
     s_collateralDeposited[msg.sender][tokenCollateralAddress] += amountCollateral;
     emit CollateralDeposited(msg.sender, tokenCollateralAddress, amountCollateral);
@@ -954,70 +744,28 @@ function depositCollateral(address tokenCollateralAddress, uint256 amountCollate
 One last thing to note in this function - our transferFrom call actually returns a boolean. We want to assure this transfer is successful, otherwise revert this function call. One last conditional to add...
 
 ```solidity
-bool success = IERC20(tokenCollateralAddress).transferFrom(msg.sender, address(this), amountCollateral);
-
-if(!success){
-    revert DSCEngine__TransferFailed();
-}
-```
-
-...and one last custom error:
-
-```solidity
-
 contract DSCEngine {
-
-    ///////////////////
-    //     Errors    //
-    ///////////////////
-
-    error DSCEngine__TokenAddressesAndPriceFeedAddressesAmountsDontMatch();
-    error DSCEngine__NeedsMoreThanZero();
-    error DSCEngine__TokenNotAllowed(address token);
     error DSCEngine__TransferFailed();
 
     ...
 
+    function depositCollateral(address tokenCollateralAddress, uint256 amountCollateral) external moreThanZero(amountCollateral) isAllowedToken(tokenCollateralAddress) nonReentrant{
+        s_collateralDeposited[msg.sender][tokenCollateralAddress] += amountCollateral;
+        emit CollateralDeposited(msg.sender, tokenCollateralAddress, amountCollateral);
+
+        bool success = IERC20(tokenCollateralAddress).transferFrom(msg.sender, address(this), amountCollateral);
+
+        if(!success){
+            revert DSCEngine__TransferFailed();
+        }
+    }
 }
 ```
 
-### Wrap Up
-
-This function is looking pretty dang great! We've finished writing depositCollateral which allows users to .. deposit collateral .. but it does so much more! We've written modifier to sanitize our function inputs as well as employed best practice design patterns like CEI and events to keep things secure.
-
-This may be a good place to start writing some tests to make sure everything written so far is performing as expected, but let's write a few more functions before getting into that.
-
-I've left our DSCEngine.sol (up to this point in the lesson) below for reference. Over the next few lessons, I'll continue to include this contract in it's entirety for reference.
-
-See you in the next lesson!
-
-DSCEngine.sol
+DSCEngine.sol contract so far
 
 ```solidity
-// Layout of Contract:
-// version
-// imports
-// errors
-// interfaces, libraries, contracts
-// Type declarations
-// State variables
-// Events
-// Modifiers
-// Functions
-
-// Layout of Functions:
-// constructor
-// receive function (if exists)
-// fallback function (if exists)
-// external
-// public
-// internal
-// private
-// internal & private view & pure functions
-// external & public view & pure functions
-
 // SPDX-License-Identifier: MIT
-
 pragma solidity 0.8.18;
 
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -1025,24 +773,24 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { DecentralizedStableCoin } from "./DecentralizedStableCoin.sol";
 
 /*
- * @title DSCEngine
- * @author Patrick Collins
- *
- * The system is designed to be as minimal as possible, and have the tokens maintain a 1 token == $1 peg at all times.
- * This is a stablecoin with the properties:
- * - Exogenously Collateralized
- * - Dollar Pegged
- * - Algorithmically Stable
- *
- * It is similar to DAI if DAI had no governance, no fees, and was backed by only WETH and WBTC.
- *
- * Our DSC system should always be "overcollateralized". At no point, should the value of
- * all collateral < the $ backed value of all the DSC.
- *
- * @notice This contract is the core of the Decentralized Stablecoin system. It handles all the logic
- * for minting and redeeming DSC, as well as depositing and withdrawing collateral.
- * @notice This contract is based on the MakerDAO DSS system
- */
+    * @title DSCEngine
+    * @author Patrick Collins
+    *
+    * The system is designed to be as minimal as possible, and have the tokens maintain a 1 token == $1 peg at all times.
+    * This is a stablecoin with the properties:
+    * - Exogenously Collateralized
+    * - Dollar Pegged
+    * - Algorithmically Stable
+    *
+    * It is similar to DAI if DAI had no governance, no fees, and was backed by only WETH and WBTC.
+    *
+    * Our DSC system should always be "overcollateralized". At no point, should the value of
+    * all collateral < the $ backed value of all the DSC.
+    *
+    * @notice This contract is the core of the Decentralized Stablecoin system. It handles all the logic
+    * for minting and redeeming DSC, as well as depositing and withdrawing collateral.
+    * @notice This contract is based on the MakerDAO DSS system
+*/
 contract DSCEngine is ReentrancyGuard {
 
     ///////////////////
