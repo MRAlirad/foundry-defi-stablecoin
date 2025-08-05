@@ -2,19 +2,18 @@
 pragma solidity ^0.8.18;
 // Handler is going to naroow down the way we call function
 
-import { Test, console } from "forge-std/Test.sol";
-import { ERC20Mock } from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
-import { DSCEngine } from "../../src/DSCEngine.sol";
-import { DecentralizedStableCoin } from "../../src/DecentralizedStableCoin.sol";
-import { MockV3Aggregator } from "../mocks/MockV3Aggregator.sol";
-
+import {Test, console} from "forge-std/Test.sol";
+import {ERC20Mock} from "@openzeppelin/contracts/mocks/ERC20Mock.sol";
+import {DSCEngine} from "../../src/DSCEngine.sol";
+import {DecentralizedStableCoin} from "../../src/DecentralizedStableCoin.sol";
+import {MockV3Aggregator} from "../mocks/MockV3Aggregator.sol";
 
 contract Handler is Test {
     DSCEngine dsce;
     DecentralizedStableCoin dsc;
     ERC20Mock weth;
     ERC20Mock wbtc;
-    
+
     uint256 public timesMintIsCalled;
     address[] usersWithCollateralDeposited;
     MockV3Aggregator public ethUsdPriceFeed;
@@ -33,8 +32,7 @@ contract Handler is Test {
     }
 
     function mintDsc(uint256 amount, uint256 addressSeed) public {
-
-        if(usersWithCollateralDeposited.length == 0){
+        if (usersWithCollateralDeposited.length == 0) {
             return;
         }
 
@@ -62,13 +60,13 @@ contract Handler is Test {
     function depositCollateral(uint256 collateralSeed, uint256 amountCollateral) public {
         ERC20Mock collateral = _getCollateralFromSeed(collateralSeed);
         amountCollateral = bound(amountCollateral, 1, MAX_DEPOSITE_SIZE);
-        
+
         vm.startPrank(msg.sender);
         collateral.mint(msg.sender, amountCollateral);
         collateral.approve(address(dsce), amountCollateral);
         dsce.depositCollateral(address(collateral), amountCollateral);
         vm.stopPrank();
-        
+
         usersWithCollateralDeposited.push(msg.sender);
     }
 
@@ -76,10 +74,10 @@ contract Handler is Test {
         ERC20Mock collateral = _getCollateralFromSeed(collateralSeed);
         uint256 maxCollateralToRedeem = dsce.getCollateralBalanceOfUser(address(collateral), msg.sender);
         amountCollateral = bound(amountCollateral, 0, maxCollateralToRedeem);
-        if(amountCollateral == 0) return;
+        if (amountCollateral == 0) return;
         dsce.redeemCollateral(address(collateral), amountCollateral);
     }
-    
+
     // THIS BREAKS OUR INVARIANT TEST SUITE!!!
     // function updateCollateralPrice(uint96 newPrice) public {
     //     int256 newPriceInt = int256(uint256(newPrice));

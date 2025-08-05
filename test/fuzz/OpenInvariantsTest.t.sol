@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.18;
 
-import { Test, console } from "forge-std/Test.sol";
-import { StdInvariant } from "forge-std/StdInvariant.sol";
-import { DeployDSC } from "../../script/DeployDSC.s.sol";
-import { DecentralizedStableCoin } from "../../src/DecentralizedStableCoin.sol";
-import { DSCEngine } from "../../src/DSCEngine.sol";
-import { HelperConfig } from "../../script/HelperConfig.s.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Test, console} from "forge-std/Test.sol";
+import {StdInvariant} from "forge-std/StdInvariant.sol";
+import {DeployDSC} from "../../script/DeployDSC.s.sol";
+import {DecentralizedStableCoin} from "../../src/DecentralizedStableCoin.sol";
+import {DSCEngine} from "../../src/DSCEngine.sol";
+import {HelperConfig} from "../../script/HelperConfig.s.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Handler} from "./Handler.t.sol";
-
 
 contract OpenInvariantsTest is StdInvariant, Test {
     DeployDSC deployer;
@@ -23,7 +22,7 @@ contract OpenInvariantsTest is StdInvariant, Test {
     function setUp() external {
         deployer = new DeployDSC();
         (dsc, dsce, config) = deployer.run();
-        (,,weth, wbtc, ) = config.activeNetworkConfig();
+        (,, weth, wbtc,) = config.activeNetworkConfig();
         // targetContract(address(dsce));
         handler = new Handler(dsce, dsc);
         targetContract(address(handler));
@@ -41,7 +40,7 @@ contract OpenInvariantsTest is StdInvariant, Test {
         console.log("wethValue: ", wethValue);
         console.log("wbtcValue: ", wbtcValue);
         console.log("Times Mint Called: ", handler.timesMintIsCalled());
-        
+
         assert(totalSupply <= wethValue + wbtcValue);
     }
 }
