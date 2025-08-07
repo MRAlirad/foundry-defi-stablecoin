@@ -2493,11 +2493,7 @@ vm.expectRevert(abi.encodeWithSelector(DSCEngine.DSCEngine__BreaksHealthFactor.s
 
 ### The Bug
 
-In the previous lesson I alluded to there being a severe bug, one of the changes made in the code base since then is mitigating this bug.
-
-Did you find it?
-
-The issue was found in how we calculated our Health Factor originally.
+The issue was in how we calculated our Health Factor originally.
 
 ```solidity
 function _healthFactor(address user) private view returns(uint256){
@@ -2526,9 +2522,6 @@ function _calculateHealthFactor(uint256 totalDscMinted, uint256 collateralValueI
 ### Change 3
 
 The last major change in the repo since our last lesson is the addition to a number of view/getter functions in DSCEngine.sol. This is just to make it easier to interact with the protocol overall.
-
-<details>
-<summary>View Functions</summary>
 
 ```solidity
 function getPrecision() external pure returns (uint256) {
@@ -2572,12 +2565,7 @@ function getHealthFactor(address user) external view returns (uint256) {
 }
 ```
 
-</details>
-
 If you managed to improve your coverage, even if not to this extent, you should be proud of getting this far. This code base is hard to write tests for and a lot of it comes with experience, practice and familiarity.
-
-> ❗ **PROTIP**
-> Repetition is the mother of skill.
 
 ### Fuzzing
 
