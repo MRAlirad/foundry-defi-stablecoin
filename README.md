@@ -2031,15 +2031,9 @@ forge test --mt testRevertsIfCollateralZero
 
 ## Create the depositAndMint function
 
-The parameters for our depositCollateralAndMintDsc function are going to be similar to what we've seen in depositCollateral.
+The parameters for our depositCollateralAndMintDsc function are going to be similar to what we've seen in depositCollateral. All we really need to do, in this function, is call our depositCollateral and mintDsc functions in sequence.
 
-```solidity
-function depositCollateralAndMintDsc(address tokenCollateralAddress, uint256 amountCollateral, uint256 amountDscToMint){}
-```
-
-All we really need to do, in this function, is call our depositCollateral and mintDsc functions in sequence.
-
-> ❗ **NOTE**
+> ❗ **NOTE** <br />
 > Both `depositCollateral` and `mintDsc` are current `external` functions. Set them to `public` before proceeding!
 
 Because this is one of our main functions, we're absolutely going to add some NATSPEC.
@@ -2059,7 +2053,7 @@ function depositCollateralAndMintDsc(address tokenCollateralAddress, uint256 amo
 
 ## redeemCollateral
 
-So far we've afforded our users a way to put money _into_ the protocol, they'll certainly need a way to get it out. Let's work through `redeemCollateral` next. This function is going to need to do a couple things:
+Let's work through `redeemCollateral` next.
 
 1. Check that withdrawing the requested amount doesn't cause the account's `Health Factor` to break (fall below 1)
 2. transfer the requested tokens from the protocol to the user
@@ -2068,33 +2062,25 @@ So far we've afforded our users a way to put money _into_ the protocol, they'll 
 function redeemCollateral(address tokenCollateralAddress, uint256 amountCollateral) public moreThanZero(amountCollateral) nonReentrant{}
 ```
 
-> ❗ **PROTIP**
-> DRY: Don't Repeat Yourself. We'll be employing this concept from computer science later when we return to this function to refactor things.
+> ❗ **PROTIP** <br />
+> DRY: Don't Repeat Yourself.
 
 We append the `moreThanZero` and `nonReentrant` modifiers to our function to prevent zero value transactions and as a safeguard for reentrancy.
 
-With checks in place, we'll want to update the internal accounting of the contract to reflect the withdrawal. This updates contract state, so of course we'll want to emit a new event.
+We'll want to update the internal accounting of the contract to reflect the withdrawal. This updates contract state, so of course we'll want to emit a new event.
 
 ```solidity
+event CollateralRedeemed(address indexed user, address indexed token, uint256 indexed amount);
+...
+
 function redeemCollateral(address tokenCollateralAddress, uint256 amountCollateral) public moreThanZero(amountCollateral) nonReentrant{
     s_collateralDeposited[msg.sender][tokenCollateralAddress] -= amountCollateral;
     emit CollateralRedeemed(msg.sender, tokenCollateralAddress, amountCollateral);
 }
 ```
 
-> ❗ **NOTE**
+> ❗ **NOTE** <br />
 > We're relying on the Solidity compiler to revert if a user attempts to redeem an amount greater than their balance. More recent versions of the Solidity compiler protect against unsafe math.
-
-Don't forget to add your event to the top of your contract as well.
-
-```solidity
-////////////////
-//   Events   //
-////////////////
-
-event CollateralDeposited(address indexed user, address indexed token, uint256 indexed amount);
-event CollateralRedeemed(address indexed user, address indexed token, uint256 indexed amount);
-```
 
 At this point in our function, we'll want to transfer the redeemed tokens to the user, but we're caught in a trap of sorts. Part of our requirements for this function is that the user's `Health Factor` mustn't be broken after the transfer as occurred. In situations like these, you may see the `CEI (Checks, Effects, Interactions)` pattern broken sometimes. A protocol _could_ call a function prior to the transfer to calculate changes and determine if the `Health Factor` is broken, before a transfer occurs, but this is often quite gas intensive. For this reason protocols will often sacrifice `CEI` for efficiency.
 
@@ -2112,9 +2098,9 @@ function redeemCollateral(address tokenCollateralAddress, uint256 amountCollater
 }
 ```
 
-This looks great. What does a user do when they want to exit the protocol entirely though? Redeeming all of their collateral through this function will revert due to the user's `Health Factor` breaking. The user would first need to burn their `DSC` to release their collateral. This two step process would be cumbersome (much liked `depositCollateral` and `mintDsc` was), so let's write the `burnDsc` function, then combine the two.
+What does a user do when they want to exit the protocol entirely though? Redeeming all of their collateral through this function will revert due to the user's `Health Factor` breaking. The user would first need to burn their `DSC` to release their collateral. This two step process would be cumbersome (much liked `depositCollateral` and `mintDsc` was), so let's write the `burnDsc` function, then combine the two.
 
-### burnDsc
+### burnDsc function
 
 In order for a user to burn their `DSC`, the tokens will need to be transferred to `address(0)`, and their balance within our `s_DSCMinted` mapping will need to be updated. Rather than transferring to `address(0)` ourselves, our function will take the tokens from the user and then call the inherent burn function on the token. We'll apply the `moreThanZero` modifier for our usual reasons (non-zero transactions only!).
 
@@ -2144,7 +2130,7 @@ function burnDsc(uint256 amount) public moreThanZero(amount){
 }
 ```
 
-> ❗ **NOTE**
+> ❗ **NOTE** <br />
 > We've added `_revertIfHealthFactorIsBroken`, but realistically, it should never hit, the user is burning "debt" and this should only improve the `Health Factor` of the account. A gas audit may remove this line.
 
 ### redeemCollateralForDsc
@@ -2153,11 +2139,11 @@ With both `redeemCollateral` and `burnDsc` written, we can now combine the funct
 
 ```solidity
 /*
- * @param tokenCollateralAddress: the collateral address to redeem
- * @param amountCollateral: amount of collateral to redeem
- * @param amountDscToBurn: amount of DSC to burn
- * This function burns DSC and redeems underlying collateral in one transaction
- */
+    * @param tokenCollateralAddress: the collateral address to redeem
+    * @param amountCollateral: amount of collateral to redeem
+    * @param amountDscToBurn: amount of DSC to burn
+    * This function burns DSC and redeems underlying collateral in one transaction
+*/
 function redeemCollateralForDsc(address tokenCollateralAddress, uint256 amountCollateral, uint256 amountDscToBurn) external {
     burnDsc(amountDscToBurn);
     redeemCollateral(tokenCollateralAddress, amountCollateral);
@@ -2165,16 +2151,6 @@ function redeemCollateralForDsc(address tokenCollateralAddress, uint256 amountCo
 ```
 
 ## Liquidation
-
-Our `DSCEngine` is almost done! We've got a couple more functions to flesh out still.
-
-```solidity
-function liquidate() external {}
-
-function getHealthFactor() external view {}
-```
-
-We'll build out the `liquidate` function next, as it's an incredibly important pillar of how this protocol works.
 
 Now that users are able to deposit collateral and mint, we need to protect against the protocol becoming `under-collateralized`. If the value of deposited collateral falls, such that users' `Health Factors` are broken, we need a method by which another user can `liquidate` those unhealthy positions to secure the value of the stablecoin.
 
@@ -2192,50 +2168,36 @@ Let's write this out.
 
 ```solidity
 /*
-* @param collateral: The ERC20 token address of the collateral you're using to make the protocol solvent again.
-* This is collateral that you're going to take from the user who is insolvent.
-* In return, you have to burn your DSC to pay off their debt, but you don't pay off your own.
-* @param user: The user who is insolvent. They have to have a _healthFactor below MIN_HEALTH_FACTOR
-* @param debtToCover: The amount of DSC you want to burn to cover the user's debt.
-*
-* @notice: You can partially liquidate a user.
-* @notice: You will get a 10% LIQUIDATION_BONUS for taking the users funds.
-* @notice: This function working assumes that the protocol will be roughly 150% overcollateralized in order for this
-to work.
-* @notice: A known bug would be if the protocol was only 100% collateralized, we wouldn't be able to liquidate
-anyone.
-* For example, if the price of the collateral plummeted before anyone could be liquidated.
+    * @param collateral: The ERC20 token address of the collateral you're using to make the protocol solvent again.
+    * This is collateral that you're going to take from the user who is insolvent.
+    * In return, you have to burn your DSC to pay off their debt, but you don't pay off your own.
+    * @param user: The user who is insolvent. They have to have a _healthFactor below MIN_HEALTH_FACTOR
+    * @param debtToCover: The amount of DSC you want to burn to cover the user's debt.
+    *
+    * @notice: You can partially liquidate a user.
+    * @notice: You will get a 10% LIQUIDATION_BONUS for taking the users funds.
+    * @notice: This function working assumes that the protocol will be roughly 150% overcollateralized in order for this
+    to work.
+    * @notice: A known bug would be if the protocol was only 100% collateralized, we wouldn't be able to liquidate
+    anyone.
+    * For example, if the price of the collateral plummeted before anyone could be liquidated.
 */
 function liquidate(address collateral, address user, uint256 debtToCover) external moreThanZero(debtToCover) nonReentrant {}
 ```
 
-As such an important function to the protocol we've made every effort to be as clear and verbose in our `NATSPEC` as possible. If any of this isn't clear, or the motivations behind what we're doing seem confusing - use the resources you have to your advantage. Ask questions on **[Stack Exchange](https://ethereum.stackexchange.com/)** and **[Discord](https://discord.gg/cyfrin)**, open **[GitHub Discussions](https://github.com/Cyfrin/foundry-full-course-f23/discussions)**, use AI tools. Problem solving is paramount in software engineering.
-
-Alright, let's keep going. The first thing we'll want to do in `liquidate` is verify that the passed user is eligible for liquidation. Someone being liquidated should have a `Health Factor` below `1`, otherwise this function should revert.
+The first thing we'll want to do in `liquidate` is verify that the passed user is eligible for liquidation. Someone being liquidated should have a `Health Factor` below `1`, otherwise this function should revert.
 
 ```solidity
+error DSCEngine__HealthFactorOk();
+
+...
+
 function liquidate(address collateral, address user, uint256 debtToCover) external moreThanZero(debtToCover) nonReentrant {
     uint256 startingUserHealthFactor = _healthFactor(user);
     if(startingUserHealthFactor > MIN_HEALTH_FACTOR){
         revert DSCEngine__HealthFactorOk();
     }
 }
-```
-
-Of course, we'll add our error to the errors section at the top of our contract.
-
-```solidity
-///////////////////
-//     Errors    //
-///////////////////
-
-error DSCEngine__TokenAddressesAndPriceFeedAddressesAmountsDontMatch();
-error DSCEngine__NeedsMoreThanZero();
-error DSCEngine__TokenNotAllowed(address token);
-error DSCEngine__TransferFailed();
-error DSCEngine__BreaksHealthFactor(uint256 healthFactor);
-error DSCEngine__MintFailed();
-error DSCEngine__HealthFactorOk();
 ```
 
 Our next step in the `liquidate` function is to remove the unhealthy position from the protocol, to do this we'll have to:
@@ -2261,9 +2223,6 @@ function liquidate(address collateral, address user, uint256 debtToCover) extern
 We're passing the `getTokenAmountFromUsd` function the type of collateral, and the amount of debt we're covering. From this we'll be able to use price feeds to determine how much of the given collateral should be redeemed. This will be another public/external view function.
 
 ```solidity
-//////////////////////////////////////////
-//   Public & External View Functions   //
-//////////////////////////////////////////
 
 function getTokenAmountFromUsd(address token, uint256 usdAmountInWei) public view returns (uint256) {
     AggregatorV3Interface priceFeed = AggregatorV3Interface(s_priceFeeds[token]);
@@ -2275,9 +2234,14 @@ function getTokenAmountFromUsd(address token, uint256 usdAmountInWei) public vie
 
 Remember, we multiply by `PRECISION(1e18)` and `ADDITIONAL_FEED_PRECISION (1e10)` to assure our decimal precision is aligned in our numerator and denominator.
 
-Next, let's ensure the `liquidator` is being incentivized for securing the protocol, we'll configure a `10%` bonus to the collateral awarded to the `liquidator`.
+Next, let's ensure the `liquidator` is being incentivized for securing the protocol, we'll configure a `10%` bonus to the collateral awarded to the `liquidator`. Be sure to declare our new constant state variable, `LIQUIDATION_BONUS`. By setting this to `10` and dividing by our `LIQUIDATION_PRECISION` of `100`, we're setting a `10%` collateral bonus.
+
 
 ```solidity
+uint256 private constant LIQUIDATION_BONUS = 10;
+
+...
+
 function liquidate(address collateral, address user, uint256 debtToCover) external moreThanZero(debtToCover) nonReentrant {
     uint256 startingUserHealthFactor = _healthFactor(user);
     if(startingUserHealthFactor > MIN_HEALTH_FACTOR){
@@ -2288,16 +2252,6 @@ function liquidate(address collateral, address user, uint256 debtToCover) extern
 
     uint256 bonusCollateral = (tokenAmountFromDebtCovered * LIQUIDATION_BONUS) / LIQUIDATION_PRECISION;
 }
-```
-
-Be sure to declare our new constant state variable, `LIQUIDATION_BONUS`. By setting this to `10` and dividing by our `LIQUIDATION_PRECISION` of `100`, we're setting a `10%` collateral bonus.
-
-```solidity
-/////////////////////////
-//   State Variables   //
-/////////////////////////
-
-uint256 private constant LIQUIDATION_BONUS = 10;
 ```
 
 We then of course add this bonus to our current `tokenAmountFromDebtCovered`, to acquire the total collateral being redeemed.
@@ -2319,41 +2273,21 @@ function liquidate(address collateral, address user, uint256 debtToCover) extern
 
 ## Liquidation/Refactoring
 
-In the last lesson we left off with our `liquidate` function still needing to redeem the unhealthy position's collateral, and burn the `liquidator`'s `DSC`. If we look at the `redeemCollateral` function, we can see why achieving our goal won't be as simple as calling `redeemCollateral` and `burnDsc`.
-
-```solidity
-function redeemCollateral(address tokenCollateralAddress, uint256 amountCollateral) public moreThanZero(amountCollateral) nonReentrant{
-    s_collateralDeposited[msg.sender][tokenCollateralAddress] -= amountCollateral;
-    emit CollateralRedeemed(msg.sender, tokenCollateralAddress, amountCollateral);
-
-    bool success = IERC20(tokenCollateralAddress).transfer(msg.sender, amountCollateral);
-    if(!success){
-        revert DSCEngine__TransferFailed();
-    }
-
-    _revertIfHealthFactorIsBroken(msg.sender);
-}
-```
-
-Currently this function has `msg.sender` hardcoded as the user for which collateral is redeemed _and_ sent to. This isn't the case when someone is being `liquidated`, the `msg.sender` is a third party. So, how do we adjust things to account for this?
+Currently `redeemCollateral` function has `msg.sender` hardcoded as the user for which collateral is redeemed _and_ sent to. This isn't the case when someone is being `liquidated`, the `msg.sender` is a third party.
 
 What we'll do is refactor the contract to include an _internal_ `_redeemCollateral` function which is only callable by permissioned methods within the protocol. This will allow our liquidate function to redeem the collateral of an arbitrary user when appropriate conditions are met.
 
-We'll add this new internal function under our `Private & Internal View Functions` header.
-
 ```solidity
-///////////////////////////////////////////
-//   Private & Internal View Functions   //
-///////////////////////////////////////////
+event CollateralRedeemed(address indexed redeemedFrom, address indexed redeemedTo, address indexed token, uint256 amount);
 
-function _redeemCollateral(address tokenCollateralAddress, uint256 amountCollateral, address from, address to) private {
+...
+
+function _redeemCollateral(address from, address to, address tokenCollateralAddress, uint256 amountCollateral) private {
     s_collateralDeposited[from][tokenCollateralAddress] -= amountCollateral;
-    emit CollateralRedeemed(msg.sender, tokenCollateralAddress, amountCollateral);
+    emit CollateralRedeemed(from, to, tokenCollateralAddress, amountCollateral);
 
     bool success = IERC20(tokenCollateralAddress).transfer(to, amountCollateral);
-    if(!success){
-        revert DSCEngine__TransferFailed();
-    }
+    if (!success) revert DSCEngine__TransferFailed();
 }
 ```
 
@@ -2361,31 +2295,11 @@ The above internal version of `redeemCollateral` contains the same logic as our 
 
 At this point let's adjust our `CollateralRedeemed` event. We're going to adjust the emission and the declaration of the event to handle this new from/to structure. We'll adjust this in our public `redeemCollateral` function soon.
 
-```solidity
-////////////////
-//   Events   //
-////////////////
-
-event CollateralDeposited(address indexed user, address indexed token, uint256 indexed amount);
-event CollateralRedeemed(address indexed redeemedFrom, address indexed redeemedTo, address indexed token, uint256 amount);
-
-...
-
-function _redeemCollateral(address tokenCollateralAddress, uint256 amountCollateral, address from, address to){
-
-    ...
-
-    emit CollateralRedeemed(from, to, tokenCollateralAddress, amountCollateral);
-
-    ...
-}
-```
-
 Now, back in our public `redeemCollateral` function, we can simply call this internal version and hardcode the appropriate `msg.sender` values.
 
 ```solidity
 function redeemCollateral(address tokenCollateralAddress, uint256 amountCollateral) public moreThanZero(amountCollateral) nonReentrant{
-    _redeemCollateral(tokenCollateralAddress, amountCollateral, msg.sender, msg.sender);
+    _redeemCollateral(msg.sender, msg.sender, tokenCollateralAddress, amountCollateral);
     _revertIfHealthFactorIsBroken(msg.sender);
 }
 ```
@@ -2406,11 +2320,11 @@ function liquidate(address collateral, address user, uint256 debtToCover) extern
 
     uint256 totalCollateralRedeemed = tokenAmountFromDebtCovered + bonusCollateral;
 
-    _redeemCollateral(collateral, totalCollateralRedeemed, user, msg.sender);
+    _redeemCollateral(user, msg.sender, collateral, totalCollateralToRedeem);
 }
 ```
 
-With the refactoring we've just done, we can be sure that the `liquidator` will be awarded the collateral (after some testing of course). We're going to need to do the same thing with our `burnDsc` function, which is currently public and hardcoded with `msg.sender` as well.
+With the refactoring we've just done, we can be sure that the `liquidator` will be awarded the collateral. We're going to need to do the same thing with our `burnDsc` function, which is currently public and hardcoded with `msg.sender` as well.
 
 ```solidity
 function burnDsc(uint256 amount) public moreThanZero(amount){
@@ -2446,7 +2360,7 @@ function liquidate(address collateral, address user, uint256 debtToCover) extern
 
     uint256 totalCollateralRedeemed = tokenAmountFromDebtCovered + bonusCollateral;
 
-    _redeemCollateral(collateral, totalCollateralRedeemed, user, msg.sender);
+    _redeemCollateral(user, msg.sender, collateral, totalCollateralToRedeem);
 
     _burnDsc(debtToCover, user, msg.sender);
 }
@@ -2455,22 +2369,21 @@ function liquidate(address collateral, address user, uint256 debtToCover) extern
 Importantly, we're calling these low level internal calls, so we've going to want to check some `Health Factors` here. If the `liquidation` somehow doesn't result in the user's `Health Factor` improving, we should revert. This will come with a new custom error.
 
 ```solidity
-uint256 endingUserHealthFactor = _healthFactor(user);
-if(endingUserHealthFactor <= startingUserHealthFactor){
-    revert DSCEngine__HealthFactorNotImproved();
-}
-```
-
-Be sure to declare the custom error where appropriate.
-
-```solidity
-///////////////////
-//     Errors    //
-///////////////////
+error DSCEngine__HealthFactorNotImproved();
 
 ...
 
-error DSCEngine__HealthFactorNotImproved();
+function liquidate(address collateral, address user, uint256 debtToCover) external moreThanZero(debtToCover) nonReentrant {
+...
+uint256 endingUserHealthFactor = _healthFactor(user);
+
+...
+
+if(endingUserHealthFactor <= startingUserHealthFactor){
+    revert DSCEngine__HealthFactorNotImproved();
+}
+}
+
 ```
 
 The last thing we'll want to do is also ensure that our `liquidator`'s `Health Factor` hasn't been broken. Our final `liquidate` function should look like this:
@@ -2514,31 +2427,31 @@ After running the command, you may find that we have some work to do regarding t
 
 We have some price feed tests, but we should probably set up some constructor tests. It's important to make sure that everything is being initialized correctly. Let's copy the price feed tests, and name them to constructor tests:
 
-```javascript
+```solidity
 // Constructor Tests
 ```
 
 To prevent the code from going crazy, we'll create a test function with:
 
-```javascript
+```solidity
 functoin test
 ```
 
 From here, we can navigate to the constructor to see that:
 
-```javascript
+```solidity
 revert DSCEngine_TokenAddressesAndPriceFeedAddressesMustBeSameLength();
 ```
 
 This means we should make sure we revert correctly when the lengths aren't the same with:
 
-```javascript
+```solidity
 functoin testRevertsIfTokenLengthDoesntMatchPriceFeeds() public {
 ```
 
 Next, we create some address arrays, and push data to the arrays:
 
-```javascript
+```solidity
 address[] public tokenAddresses;
 address[] public priceFeedAddresses;
 
@@ -2549,14 +2462,14 @@ feedAddresses.push(btcUsdPriceFeed);
 
 With that done, we can add the expected revert with:
 
-```javascript
+```solidity
 vm.expectRevert(DSC Engine.
 DSCEngine_TokenAddressesAndPriceFeedAddressesMustBeSameLength.selector);
 ```
 
 And then call with:
 
-```javascript
+```solidity
 new DSCEngine(tokenAddresses, priceFeedAddresses, address(dsc));
 ```
 
@@ -2568,13 +2481,13 @@ forge test -m testRevertsIfTokenLengthDoesntMatchPriceFeeds
 
 From here, we can test the Price Feeds using the command:
 
-```javascript
+```solidity
 function testGetUsdValue() public {
 ```
 
 To test the getter TokenAmountFromUsd do the following:
 
-```javascript
+```solidity
 function testGetTokenAmountFromUsd() public {
 uint256 usdAmount = 100 ether;
 uint256 expectedWeth = 0.05 ether;
@@ -2590,7 +2503,7 @@ forge test -m testGetTokenAmountFromUsd
 
 Next we create a deposittedCollateral modifier. A modifier allows us to centralize our testing:
 
-```javascript
+```solidity
 modifier depositedCollateral() {
 vm.startPrank(USER);
 ERC20Mock(weth).approve(address(dsce), AMOUNT_COLLATERAL);
@@ -2602,7 +2515,7 @@ _;
 
 Apply it as:
 
-```javascript
+```solidity
 public depositedCollateral {
 ```
 
