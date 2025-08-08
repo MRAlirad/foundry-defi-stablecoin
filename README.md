@@ -2569,11 +2569,7 @@ If you managed to improve your coverage, even if not to this extent, you should 
 
 ### Fuzzing
 
-With all this being said, we're not done yet. We're going to really take a security minded focus and build out a thorough fuzz testing suite as well. While developing a protocol and writing tests, we should always be thinking **"What are my protocol invariants?"**. Having these clearly defined will make advanced testing easier for us to configure.
-
-Let's detail Fuzz Testing at a high-level before diving into it's application.
-
-Fuzz Testing is when you supply random data to a system in an attempt to break it. If you recall the example used in a previous lesson:
+Fuzz Testing is when you supply random data to a system in an attempt to break it.
 
 ```solidity
 //SPDX-License-Identifier: MIT
@@ -2614,9 +2610,9 @@ function testIAlwaysGetZero(uint256 data) public {
 }
 ```
 
-That's it. Now, if we run this test with Foundry, it'll throw random data at our function as many times as we tell it to (we'll discuss runs soon), until it breaks our assertion.
+Now, if we run this test with Foundry, it'll throw random data at our function as many times as we tell it to, until it breaks our assertion.
 
-I'll mention now that the fuzzer isn't using _truly_ random data, it's pseudo-random, and how your fuzzing tool chooses its data matters! Echidna and Foundry are both solid choices in this regard, but I encourage you to research the differences on your own.
+،he fuzzer isn't using _truly_ random data, it's pseudo-random, and how your fuzzing tool chooses its data matters! Echidna and Foundry are both solid choices in this regard.
 
 Important properties of the fuzz tests we configure are its `runs` and `depth`.
 
@@ -2645,11 +2641,7 @@ function doStuff(uint256 data) public {
 
 We can see it will run all .. 1001 runs (I guess zero counts 😅).
 
-Let's look at an example where the fuzz testing we've discussed so far will fail to catch our issue.
-
 ### Stateful Fuzz Testing
-
-Take the following contract for example:
 
 ```solidity
 // SPDX-License-Identifier: MIT
@@ -2687,7 +2679,7 @@ pragma solidity ^0.8.13;
 
 import {CaughtWithTest} from "src/MyContract.sol";
 import {console, Test} from "forge-std/Test.sol";
-import{StdInvariant} from "forge-std/StdInvariant.sol";
+import {StdInvariant} from "forge-std/StdInvariant.sol";
 
 contract MyContractTest is StdInvariant, Test {
     CaughtWithTest myContract;
@@ -2723,21 +2715,7 @@ Now, if our fuzzer ever calls our doStuff function with a value of 7, hiddenValu
 
 We can see in the output the two subsequent function calls that lead to our invariant breaking. First doStuff was called with the argument of `7`, then it was called with `429288169336124586202452331323751966569421912`, but it doesn't matter what it was called with next, we knew our invariant was going to break.
 
-### Wrap Up
-
-In a real smart contract scenario, the invariant may actually be the most difficult thing to determine. It's unlikely to be something as simple as x shouldn't be zero, it might be something like
-
--   `newTokensMinted < inflation rate`
--   A lottery should only have 1 winner
--   A user can only withdraw what they deposit
-
-Practice and experience will lend themselves to identifying protocol invariants in time, but this is something you should keep in the back of your mind throughout development.
-
-Stateful/Invariant testing should be the new bare minimum in Web3 security.
-
 ## Create the fuzz tests handler pt.2
-
-Now that we've spent time investigating the types of tests available to us, and the strength of methodologies like fuzzing for protocols, we're going to build out our own `Stateful Fuzz Testing` suite for `DecentralizedStableCoin`.
 
 Navigate to the **[Fuzz Testing section](https://book.getfoundry.sh/forge/fuzz-testing)** in the Foundry Docs to read more on advanced fuzz testing within this framework.
 
@@ -2768,8 +2746,6 @@ Conversely, handler based tests route our frameworks function calls through our 
 
 <img src='./images/fuzz-tests/defi-handler-stateful-fuzz-tests2.png' alt='defi-handler-stateful-fuzz-tests2' />
 
-Let's finally start applying this methodology to our code base.
-
 ### Setup
 
 The first thing we want to do to prepare our stateful fuzzing suite is to configure some of the fuzzer options in our `foundry.toml`.
@@ -2796,8 +2772,6 @@ We need to ascertain which properties of our system must always hold. What are s
 1. The total supply of DSC should be less than the total value of collateral
 2. Getter view functions should never revert
 
-I challenge you to think of more, but these are going to be the two simple invariants we work with here.
-
 ### InvariantsTest.t.sol
 
 This file will be setup like any other test file to start, we've lots of practice here.
@@ -2815,7 +2789,7 @@ contract InvariantsTest is StdInvariant, Test {}
 
 StdInvariant is quite important for our purposes, this is where we derive the ability to set a `targetContract` which we point to our Handler.
 
-Again, just like the tests we've written so far, we're going to begin with a `setUp` function. In this setUp we'll perform our usual deployments of our needed contracts via our deployment script. We'll import our `HelperConfig` as well.
+ In this setUp we'll perform our usual deployments of our needed contracts via our deployment script. We'll import our `HelperConfig` as well.
 
 ```solidity
 // SPDX-License-Identifier: MIT
@@ -2935,7 +2909,7 @@ We can see the first function being called by the fuzzer is `depositCollateral` 
 
 ## Defi Handler Deposit Collateral
 
-Ok! In this lesson we're going to adjust the code in our Invariants.t.sol such that our tests are more focused by being routed through a handler contract. In so doing, our tests will have a more sensible order of functions to call and more contextually relevant random data.
+ٌe're going to adjust the code in our Invariants.t.sol such that our tests are more focused by being routed through a handler contract. In so doing, our tests will have a more sensible order of functions to call and more contextually relevant random data.
 
 We'll start by creating the Handler.t.sol contract.
 
