@@ -2909,7 +2909,7 @@ We can see the first function being called by the fuzzer is `depositCollateral` 
 
 ## Defi Handler Deposit Collateral
 
-ٌe're going to adjust the code in our Invariants.t.sol such that our tests are more focused by being routed through a handler contract. In so doing, our tests will have a more sensible order of functions to call and more contextually relevant random data.
+We're going to adjust the code in our Invariants.t.sol such that our tests are more focused by being routed through a handler contract. In so doing, our tests will have a more sensible order of functions to call and more contextually relevant random data.
 
 We'll start by creating the Handler.t.sol contract.
 
@@ -2923,7 +2923,7 @@ import {Test} from "forge-std/Test.sol";
 contract Handler is Test {}
 ```
 
-So, what's one of the first things we want to ensure in our handler? How about we tell our framework not to call redeemCollateral unless there's collateral available to redeem. Sounds like a sensible condition.
+One of the first things we want to ensure in our handler is to tell our framework not to call redeemCollateral unless there's collateral available to redeem.
 
 Because our test function calls are being routed through our Handler, the first thing we should do is make sure our Handler has access to the contracts it'll need to call functions on. Let's import DSCEngine and DecentralizedStableCoin then set these up in our Handler's constructor
 
@@ -3068,8 +3068,8 @@ Look! Our address passed is valid, but we're getting a different error `DSCEngin
 
 Let's keep narrowing the focus of our tests and the validity of our data.
 
-> ❗ **IMPORTANT**
-> Be careful when configuring fail*on_revert to be true \_or* false. Sometimes we risk narrowing our tests too much with our Handler that we miss edge cases.
+> ❗ **IMPORTANT** <br />
+> Be careful when configuring *fail_on_revert to be true or false*. Sometimes we risk narrowing our tests too much with our Handler that we miss edge cases.
 
 In the same way we narrowed our test to provide a valid collateral type, we can bind the `amountCollateral` being passed to our function in order to ensure this is greater than 0 and avoid this error. StdUtils has a function we can use called `bound`.
 
@@ -3110,15 +3110,11 @@ function depositCollateral(uint256 collateralSeed, uint256 amountCollateral) pub
 }
 ```
 
-If we run our test now\...
-
 <img src="./images/defi-handler-redeem-collateral/defi-handler-redeem-collateral6.png" alt="defi-handler-redeem-collateral6" />
 
 ## Create the mint handler
 
-In the last lesson our stateful fuzz tests were looking great, _but_ the validity of our tests was a little questionable because we haven't configured a way to mint any DSC during our tests. Because our totalSupply was always zero, changes to our collateral value were never going to violate our invariant.
-
-Let's change that now by writing a mintDsc function for our Handler.
+The validity of our tests was a little questionable because we haven't configured a way to mint any DSC during our tests. Because our totalSupply was always zero, changes to our collateral value were never going to violate our invariant.
 
 ```solidity
 function mintDsc(uint256 amount) public {}
@@ -3145,7 +3141,7 @@ Let's run our function and see how things look.
 forge test --mt invariant_ProtocolTotalSupplyLessThanCollateralValue
 ```
 
-> ❗ **NOTE**
+> ❗ **NOTE** <br />
 > The `totalSupply = 0` here because of a mistake we made, we'll fix it soon!
 
 Ok, so things work when we have `fail_on_revert` set to `false`. We want our tests to be quite focused, so moving forward we'll leave `fail_on_revert` to `true`. What happens when we run it now?
@@ -3545,7 +3541,7 @@ library OracleLib {
     function staleCheckLatestRoundData() public view returns () {}
 ```
 
-With our _beautiful_ `NATSPEC` in place detailing the `library` and its purposes, our main function here is going to be `stalePriceCheck`. Since we'll be checking `Chainlink's price feeds`, we know we'll need the `AggregatorV3Interface`, lets be sure to import that. The return types of our function are going to be those of the `latestRoundData` function within `AggregatorV3Interface`. Let's start by getting those values.
+With `NATSPEC` in place detailing the `library` and its purposes, our main function here is going to be `stalePriceCheck`. Since we'll be checking `Chainlink's price feeds`, we know we'll need the `AggregatorV3Interface`, lets be sure to import that. The return types of our function are going to be those of the `latestRoundData` function within `AggregatorV3Interface`. Let's start by getting those values.
 
 ```solidity
 ...
@@ -3560,7 +3556,9 @@ library OracleLib {
 
 Now, we just need to calculate the time since the last update, and if it's over a threshold, we'll revert and return our variables. `Chainlink` sets a `heartbeat` of `3600 seconds for the ETH/USD` price feed, we'll give it even more time and set a `TIMEOUT` of `3 hours`. We can add a custom error to handle timeouts at this step as well.
 
-> ❗ **PROTIP** > `hours` is a keyword in solidity that is effectively `*60*60 seconds` .
+> ❗ **PROTIP**
+>
+> `hours` is a keyword in solidity that is effectively `*60*60 seconds` .
 >
 > `3 hours` == `3 * 60 * 60` == `10800 seconds`.
 
@@ -3623,40 +3621,7 @@ contract DSCEngine is Reentrancy Guard {
 }
 ```
 
-## Preparing your protocol for an audit
-
-We talked a little bit earlier about what a `smart contract audit` is, but we haven't gone into much detail. This is saved largely for the **[Security Course](https://updraft.cyfrin.io/courses/security)** we've releases since this course, and I encourage you to jump into it next now that you're a Foundry Master!
-
-However, in brief, a great place you can look to get a sense of a protocol's audit readiness is this **[Audit Readiness Checklist](https://github.com/nascentxyz/simple-security-toolkit/blob/main/audit-readiness-checklist.md)** from Nascentxyz.
-
-Beyond this, those who are really serious about launching a protocol, be sure to reach the final lesson of this section on `Smart Contract Security`. It's there we will go a little more low-level from a developer perspective and delve into how we can protect ourselves from common attack vectors.
-
-With that said, let's recap everything we've gone over in the next lesson!
-
-## DeFi Recap
-
-Wow, we've done it. This project was enormous, advanced and frankly intense. You should 1000% push this to your GitHub repo and be incredibly proud of yourself for completing this journey.
-
-This is one of the hardest and most complicated projects you'll find in educational content in Web3. We've learnt about:
-
--   DeFi
--   State of the art fuzz testing methodologies
--   Safe use of oracles
--   multifaceted test suites
--   integration and deployment through scripts
-    ...and more!
-
-Since the filming of this course I've had the `DecentralizedStableCoin` protocol audited on `CodeHawks`. You can find the **[audit report for the contest here](https://www.codehawks.com/contests/cljx3b9390009liqwuedkn0m0)**.
-
-I encourage you to dive into the findings submitted by the Hawks, if security or auditing is your end goal, this kind of review and research will be invaluable.
-
-After all of this, you know what time it is: **BREAK TIME**. You deserve it, and when you come back there'll be a tonne more content to move onto next.
-
-We have 3 lessons remaining in this section, and they'll be a breeze compared to this one.
-
-See you soon!
-
-### Exercises
+## Exercises
 
 **[Arbitrum NFT Challenge](https://arbiscan.io/address/0x3DbBF2F9AcFB9Aac8E0b31563dd75a2D69148D64#code)**
 
@@ -3668,8 +3633,6 @@ Additional DeFi Learnings:
 -   **[DeFi Dad](https://www.youtube.com/channel/UCatItl6C7wJp9txFMbXbSTg)**
 
 ## Lens Protocol
-
-As a _**bonus**_ bit of content I wanted to take a minute to express my support for the `Aave protocol` and the `Aave team` by highlighting one of the amazing products/services they're bringing to the Web3 space.
 
 `Lens Protocols` is a decentralized social layer/platform which empowers users to create social applications, or implement social features into their existing applications.
 
